@@ -290,8 +290,8 @@ keystore.alias_password=...
 
 ```text
 gmaps_hud/   Android application and Garmin HUD communication code
+bt-spp-library/ Bluetooth Serial Port Profile support used by the application
 gradle/      Gradle wrapper files
-docs/        Additional project material, when present
 ```
 
 ## Safety
