@@ -1,106 +1,307 @@
-# Garminuino
-There has two sub-project use GarminHUD as:
-1. an app, Google Map HUD  (Android App+GarminHUD).  
- * [Downloading newest release App here.](https://github.com/skyforcetw/Garminuino/releases)
- * [Further Information for Android App.](https://github.com/skyforcetw/Garminuino/blob/master/GoogleMaps_HUD/README.md)  
-   * [Install.](https://github.com/skyforcetw/Garminuino/blob/master/GoogleMaps_HUD/INSTALL.md)  
-   * [First Use.](https://github.com/skyforcetw/Garminuino/blob/master/GoogleMaps_HUD/FIRST_USE.md)  
-   * [Instruction.](https://github.com/skyforcetw/Garminuino/blob/master/GoogleMaps_HUD/INSTRUCTIONv052.md)  
- * [Android Auto Cooperation.](https://github.com/skyforcetw/Garminuino/blob/master/GoogleMaps_HUD/AndroidAuto.md)
- 
- * Newest App Release
-   * [2021-08-25 v0.8.9](https://github.com/skyforcetw/Garminuino/files/7044189/gmaps_hud-release_v0.8.9.zip)
-Add support for google maps go navigation.
- 
-2. a speedometer HUD  (Arduino+GarminHUD, STOP MAINTAIN)
+# Garminuino — Google Maps and AutoMapa on Garmin HUD
 
+Garminuino is an Android application that sends navigation information from a phone to a compatible **Garmin HUD** over Bluetooth. It supports current versions of **Google Maps** and **AutoMapa**, translating their navigation instructions into the compact symbols, distances, lane guidance and status information available on the HUD.
 
-***
-Known Issue:
-* The app will crash after booting on some device (ESPECIALLY ON ANDROID 6.0), then nofication capture will un-work. 
-There has no solution for this bug now. If you encounter this issue, please follow step below to resolve (sometimes works) :
-  1. Uninstall the app
-  2. rebooting
-  3. Install the app after booting. 
+This project is a modernized fork of the original [Garminuino](https://github.com/skyforcetw/Garminuino) Android application. It has been updated for recent Android releases and extended with AutoMapa support, screen analysis and more reliable HUD connection handling.
 
-***
+> [!IMPORTANT]
+> This version supports Garmin HUD hardware only. The legacy BMW HUD integration from the original project has been removed.
 
-Belows are two sub-proejct put together: GoogleMap navigation HUD(Left)+ Speedometer HUD(Center)
-<img src="./pics/124220.jpg" alt="Two Garmin HUD application" width="500"/>
+## Current status
 
-Belows are two sub-proejct & Android Auto put together: <br>
-GoogleMap navigation HUD(Left1)+ Speedometer HUD(Left2) + Android auto(Right1)<br>
-<img src="./pics/163633.jpg" alt="Two Garmin HUD application + Android Auto" width="500"/>
+- Application version: **0.9.16**
+- Minimum Android version: **Android 13 (API 33)**
+- Target Android version: **Android 16 (API 36)**
+- Tested device: **Samsung Galaxy S25 Ultra**
+- Application interface: **English**
 
-Android App: Google Map HUD
+### Navigation applications
 
-<img src="./pics/451627.jpg" alt="App layout" width="400"/>
+| Navigation app | Support level | Data source |
+| --- | --- | --- |
+| Google Maps | Supported | Android navigation notifications, with optional screen analysis |
+| AutoMapa | Supported | Navigation notifications, GPS and full-screen analysis |
+| Google Maps Go | Best effort | Android navigation notifications |
+| Sygic | Not implemented | Can be included in diagnostic recordings only |
 
-***
+## Features
 
-## ToDo List
-1. ~~Add auto-connection function.~~
-2. Auto lanunch google map when HUD connected.
-3. ~~Comment source-code.
-4. ~~Show some usage infomation when navigation is done, don't make it seems hang when navigating done.~~
-5. ~~Figure out auto connection is working well or not.~~
-6. ~~Lets "Show Speed" function working well.~~
-7. ~~Better auto-connection with GarminHUD
-8. ~~Support Sygic & OsmAnd (GIVE UP! Cause of bad text recongnition).
-9. Support Android Q's screen capture.
-10. Improve arrow recognition.
+- Current vehicle speed read directly from GPS.
+- Distance to the next manoeuvre.
+- Turn direction and roundabout guidance.
+- Remaining route distance and travel time when provided by the navigation app.
+- Estimated arrival time (ETA).
+- Lane guidance with up to six lanes.
+- AutoMapa speed-limit recognition from the screen.
+- Automatic Bluetooth connection to the previously used Garmin HUD.
+- Automatic reconnection after the HUD is disconnected and becomes available again.
+- Optional automatic startup when supported navigation begins.
+- Automatic shutdown after navigation ends when the application was auto-started.
+- Automatic or manual HUD brightness control.
+- Full-screen capture only; single-application capture is intentionally not used.
+- Built-in diagnostics for collecting navigation notifications and screen-analysis results.
 
-***
+## Information displayed on the HUD
 
-## Authors
+| Information | Google Maps | AutoMapa |
+| --- | ---: | ---: |
+| GPS speed | Yes | Yes |
+| Next manoeuvre | Yes | Yes |
+| Distance to next manoeuvre | Yes | Yes |
+| Remaining route distance | Yes | Yes |
+| Remaining travel time | Yes | Yes |
+| ETA | Yes | Yes |
+| Lane guidance | Yes | Yes, up to 6 lanes |
+| Speed limit | No dedicated parser | Yes, through screen analysis |
+| Traffic/congestion indication | Screen analysis when available | Not currently used |
 
-* **skyforce Shen** - *Initial work* - [github](https://github.com/skyforcetw) skyforce@gmail.com
+The Garmin HUD protocol has a limited set of symbols. Some navigation instructions therefore have to be mapped to the closest symbol supported by the hardware.
 
-## Contributor
-* **Gabriel Valky** / **Frank Huebenthal** - *garmin hud protocol research* - [github](https://github.com/gabonator/Work-in-progress/tree/master/GarminHud) 
+## How it works
 
-* **Niklas04** - help improve parsing & add German language support
-[github](https://github.com/Niklas04) 
+```text
+Google Maps notification ─┐
+                          ├─> instruction parser ─> Garmin HUD protocol ─> Bluetooth ─> HUD
+AutoMapa notification ────┤
+                          │
+Full-screen analysis ─────┤
+GPS speed ────────────────┘
+```
 
-* **intervigilium** - add support for BMW HUD 
-[github](https://github.com/intervigilium) 
+The application combines several Android data sources rather than depending on one fragile interface:
 
-* **Android-BluetoothSPPLibrary** - Bluetooth SPP Library, use to link Garmin HUD.
-[github](https://github.com/akexorcist/Android-BluetoothSPPLibrary) 
+1. A notification-listener service reads navigation notifications.
+2. GPS supplies the current speed independently of the navigation application.
+3. Optional full-screen analysis fills gaps that notifications do not expose, especially in AutoMapa.
+4. Parsed data is normalized and converted into Garmin HUD commands.
+5. A Bluetooth service maintains the HUD connection and retries it after an interruption.
 
-* ~~**Android-BluetoothSPPLibrary** - Bluetooth SPP Library also, which fixed issue of auto connection.
-[github](https://github.com/naevtamarkus/Android-BluetoothSPPLibrary)~~
+## Google Maps support
 
-***
-### Folder Structure
-    .
-    ├── GoogleMap_Arrow_Recognize   # Arrow Recognize Experimental Project for Visual Studio C++
-    ├── GoogleMaps_HUD              # Pure Android App based Google Maps HUD
-    ├── navigation HUD              # Arduino based Googoogle Maps HUD (deprecated)
-    ├── pics                        # Some pictures for README usage
-    └── speedometer HUD             # Arduino based Speedmeter with Garmin HUD
-***
+Google Maps primarily exposes navigation data through its ongoing Android notification. Garminuino reads the current instruction and route information from the modern notification fields, then maps the manoeuvre to a Garmin HUD symbol.
 
-Hence the information below is not necessary anymore, but I still keep it for commemorative.
+Supported instructions include, among others:
 
-![Initial concept of Garminuino](https://trello-attachments.s3.amazonaws.com/5604cb6e078e570dfc9c7404/1794x1080/accfe9e4f1f1d10e8bb62d7630130425/sketch-1443154690685.jpg "Initial concept of Garminuino")
-This is the inital concept of Garminuino, but the implment is slight difference to the concept. For example, Garmin Hud is not linked by BLE, so BLE moduble is needless.
+- left and right turns;
+- slight and sharp turns;
+- keep left and keep right;
+- forks and merges;
+- motorway entrances and exits;
+- roundabouts and exit numbers when the source data identifies them;
+- straight ahead;
+- arrival at the destination.
 
-## [Speedometer HUD](https://github.com/skyforcetw/Garminuino/tree/master/speedometer%20HUD)
+Optional screen analysis supplements the notification data with visual information such as lane guidance and congestion state. The implementation also contains a compatibility fallback for older Google Maps notification formats, but current notification data is preferred.
 
-[![IMAGE ALT TEXT HERE](https://i.ytimg.com/vi/P0d8nm3kuxs/hqdefault.jpg?sqp=-oaymwEZCPYBEIoBSFXyq4qpAwsIARUAAIhCGAFwAQ==&rs=AOn4CLAh96qD5deX_DeYAHk9CHNptn97JQ)](https://www.youtube.com/watch?v=P0d8nm3kuxsE)
+## AutoMapa support
 
-(click image can link to Youtube film)
+AutoMapa does not expose every item needed by the HUD in a stable structured interface. Garminuino therefore combines:
 
-A OBD/CanBus parser by Arduino, and a speed info transmitter by bluetooth(to GarminHUD) .
+- the AutoMapa navigation notification for textual manoeuvre information;
+- GPS for current vehicle speed;
+- full-screen analysis for visual values not reliably present in notifications.
 
-## [navigation HUD](https://github.com/skyforcetw/Garminuino/tree/master/navigation%20HUD)      (deprecated now!)
+Screen analysis can recognize:
 
-[![IMAGE ALT TEXT HERE](https://i.ytimg.com/vi/VWV_F9V6yoA/hqdefault.jpg?sqp=-oaymwEZCPYBEIoBSFXyq4qpAwsIARUAAIhCGAFwAQ==&rs=AOn4CLDerjxVyOMK8V3hm9DaY-8zb3a1DQ)](https://www.youtube.com/watch?v=VWV_F9V6yoA)
+- distance to the next manoeuvre;
+- remaining route distance;
+- remaining time and arrival time;
+- the speed limit displayed on the map;
+- lane-assistant tiles, including layouts containing two to six lanes.
 
-(click image can link to Youtube film)
+The analysis uses normalized screen regions and is not tied to one exact pixel resolution. It should therefore work on phones with different resolutions and screen densities, provided that AutoMapa uses the same portrait layout. Major AutoMapa interface changes, unusual aspect ratios, display scaling or landscape mode may require detector adjustments.
 
-Besides parts of Speedometer HUD, a USB Host Shield with a Android mobile phone can fetch Google Navigation info, and transmit info by bluetooth to GarminHUD, too.
+## Automatic startup and shutdown
 
-***
+When **Auto-start with navigation** is enabled:
 
+1. Starting supported navigation activates the HUD and GPS services.
+2. Garminuino connects to the remembered Garmin HUD automatically.
+3. If the HUD is temporarily switched off or disconnected, the application periodically attempts to reconnect.
+4. Closing the navigation application stops Garminuino's active services, disconnects the HUD and removes the application task after a short grace period.
+
+When automatic startup is disabled, Garminuino can be opened and closed manually. In this mode, stopping AutoMapa or Google Maps does not independently control the lifetime of the application.
+
+## First-time setup
+
+1. Pair the Garmin HUD with the phone in Android Bluetooth settings.
+2. Install and open Garminuino.
+3. Grant notification access when requested. This is required to read navigation instructions.
+4. Grant location permission so the application can calculate GPS speed.
+5. Select and connect to the Garmin HUD.
+6. If AutoMapa support or visual lane recognition is required, enable **Screen analysis**.
+7. Android will display its screen-capture confirmation dialog. Select full-screen sharing and approve it.
+8. Start navigation in Google Maps or AutoMapa.
+
+Android does not allow an application to permanently grant itself screen-capture permission. For that reason, **Screen analysis** starts disabled after a fresh application process and must be explicitly authorized by the user. This avoids showing an enabled switch when capture is not actually active.
+
+## Screen analysis behavior
+
+- Only full-screen capture is supported.
+- Capture permission is controlled by Android and cannot be granted silently.
+- Locking or turning off the phone screen pauses values that can only be read visually.
+- GPS and notification-based data can continue while the display is off.
+- After the screen is turned on again, visual analysis resumes automatically while the capture session remains valid.
+- If Android terminates the capture session, enable Screen analysis again and approve the system dialog.
+
+Because screen recognition observes the visible navigation interface, overlays, split-screen mode, accessibility scaling and navigation-app UI updates can affect recognition quality.
+
+## Application settings
+
+### Main
+
+- Scan for a Garmin HUD or reset the current HUD connection.
+- View the current HUD connection status.
+- Enable GPS speed display.
+- Select automatic brightness or set the manual brightness level.
+- Enable arrival-time display.
+- Enable screen analysis and grant full-screen capture permission.
+
+### Setup
+
+- Select the Garmin HUD arrow style.
+- Enable automatic startup with Google Maps or AutoMapa navigation.
+- Record, export or clear navigation diagnostics.
+- Follow the system dark theme or select dark mode manually.
+
+The interface deliberately omits obsolete or non-functional options from the original application, including the old debug tab, notification-status indicators, manual traffic controls, notification-display controls and BMW-specific settings.
+
+## Permissions
+
+| Permission or Android access | Purpose |
+| --- | --- |
+| Bluetooth / nearby devices | Discovering and connecting to the Garmin HUD |
+| Location | Reading GPS speed and supporting Bluetooth discovery where Android requires it |
+| Notification access | Reading active navigation instructions from Google Maps and AutoMapa |
+| Screen capture | Recognizing AutoMapa and Google Maps information that notifications do not provide |
+| Foreground-service notifications | Keeping an active navigation or HUD connection visible to the user and compliant with modern Android rules |
+
+## Privacy
+
+Navigation data is processed locally on the phone. The application does not require a cloud account and does not upload captured screens to a server. Screen-analysis frames are processed on-device with bundled ML Kit components. Temporary diagnostic or image files may exist in the application's private cache or in an explicitly exported diagnostic archive.
+
+Diagnostic archives can contain notification text, application identifiers, timestamps and screen-derived navigation information. Review them before sharing publicly.
+
+## Known limitations
+
+- Garmin HUD hardware limits the available graphics, lane count and manoeuvre vocabulary.
+- AutoMapa screen recognition depends on the visible layout and may need updates after a major AutoMapa UI redesign.
+- Screen-derived information is unavailable while the display is off, although notification and GPS data can remain active.
+- Android screen-capture permission must be confirmed again after the capture session or application process is terminated.
+- Some phone manufacturers may restrict foreground services or Bluetooth activity unless battery optimization is disabled for the application.
+- Google Maps Go support is best effort and is less thoroughly tested than the standard Google Maps application.
+- Sygic HUD output is not implemented in this release.
+
+## Diagnostics
+
+The application can create a navigation-diagnostics archive for investigating an instruction or layout that is not recognized correctly. A useful recording should include:
+
+- the navigation application name and version;
+- phone model, Android version, display resolution and display scaling;
+- a short route or simulation containing the problematic manoeuvre;
+- the diagnostic ZIP;
+- matching screenshots showing what was visible at that time.
+
+Diagnostic capture recognizes Google Maps, Google Maps Go, AutoMapa and Sygic as possible source applications. Recording a source does not by itself mean that HUD output for that source is implemented.
+
+## Changes from the original project
+
+The upstream Android release was version 0.8.9 from 2021 and targeted Android 6-era behavior. This fork includes substantial platform, navigation and reliability work.
+
+### Android platform modernization
+
+- Raised the minimum supported system from Android 6 / API 23 to Android 13 / API 33.
+- Updated compile and target SDK levels to API 36.
+- Migrated the build to Java 17 and current Android Gradle tooling.
+- Updated AndroidX, Google Play Services Location and related dependencies.
+- Added modern runtime handling for Bluetooth, location, notifications and foreground services.
+- Updated application components and lifecycle behavior for current Android background-execution rules.
+
+### Navigation data
+
+- Reworked Google Maps notification parsing for current notification formats.
+- Added AutoMapa notification parsing.
+- Added full-screen capture and on-device OCR for AutoMapa data unavailable through notifications.
+- Added screen-based lane recognition for layouts containing up to six lanes.
+- Added AutoMapa speed-limit, route distance, time and ETA recognition.
+- Kept vehicle speed independent by reading it directly from GPS.
+- Improved synchronization of manoeuvre symbols and distances when source fields update at different times.
+
+### HUD and background behavior
+
+- Added reliable reconnection to the last used Garmin HUD after Bluetooth interruptions.
+- Repaired manual brightness control while retaining automatic brightness as the default.
+- Added optional navigation-driven startup.
+- Added complete shutdown when the supported navigation application closes after an automatic start.
+- Restored screen-derived data automatically after the phone screen is switched back on.
+- Prevented the UI from claiming that screen analysis is active before Android capture permission has been granted.
+
+### Interface and maintenance
+
+- Removed the BMW HUD implementation and BMW-specific settings.
+- Changed all application labels and messages to English.
+- Removed obsolete, duplicated and non-functional settings.
+- Removed the old Debug tab while retaining purpose-built diagnostic export.
+- Preserved the user's scroll position when changing options near the bottom of a settings page.
+- Added tests and updated lint/build compatibility for the modernized code.
+
+## Building from source
+
+Requirements:
+
+- Android Studio with Android SDK 36 installed;
+- JDK 17;
+- a Bluetooth-capable Android device running Android 13 or newer.
+
+Clone the repository and build the debug APK:
+
+```powershell
+.\gradlew.bat :gmaps_hud:assembleDebug
+```
+
+Run unit tests:
+
+```powershell
+.\gradlew.bat :gmaps_hud:testDebugUnitTest
+```
+
+Run Android lint:
+
+```powershell
+.\gradlew.bat :gmaps_hud:lintDebug
+```
+
+The debug APK is generated under:
+
+```text
+gmaps_hud/build/outputs/apk/debug/
+```
+
+For a signed release build, provide the following Gradle properties through a secure local configuration rather than committing credentials:
+
+```properties
+keystore.path=...
+keystore.password=...
+keystore.alias=...
+keystore.alias_password=...
+```
+
+## Project structure
+
+```text
+gmaps_hud/   Android application and Garmin HUD communication code
+gradle/      Gradle wrapper files
+docs/        Additional project material, when present
+```
+
+## Safety
+
+Configure the application before driving. Do not interact with the phone, change settings or collect diagnostics while controlling a vehicle. Navigation instructions are supplementary and may be delayed, incomplete or mapped to a simplified HUD symbol.
+
+## Credits
+
+- Original Garminuino project and Garmin HUD protocol work: [skyforcetw/Garminuino](https://github.com/skyforcetw/Garminuino)
+- Google Maps is a trademark of Google LLC.
+- AutoMapa is a trademark of its respective owner.
+
+This is an independent community project and is not affiliated with or endorsed by Garmin, Google, AutoMapa or BMW.
