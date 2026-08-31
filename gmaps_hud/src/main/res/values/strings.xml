@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name" translatable="false">GoogleMaps HUD</string>
+
+
+    <!--gmaps' navigation string-->
+    <string name="exit_navigation">EXIT NAVIGATION</string>
+    <string name="ETA">ETA</string>
+    <string name="am">AM</string>
+    <string name="pm">PM</string>
+    <string name="hour">h</string>
+    <string name="hour2">h</string>
+    <string name="minute">m</string>
+    <string name="minute2">m</string>
+    <string name="km">km</string>
+    <string name="meter">m</string>
+    <string name="feet">ft</string>
+    <string name="miles">mi</string>
+
+    <string name="chinese_after" translatable="false">後</string>
+
+    <!--Prompt-->
+    <string name="prompt_switch_hud_connected">Shows the Garmin HUD connection status.</string>
+    <string name="prompt_btn_scan_bt">Use this button to connect to a disconnected Garmin HUD.</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title" translatable="false">GoogleMaps HUD</string>
+    <string name="nav_header_subtitle" translatable="false">skyforce@gmail.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+
+    <string name="layout_tab_main">Main</string>
+
+    <string name="layout_tab_setup">Setup</string>
+    <string name="layout_button_scan_hud">Scan for HUD</string>
+    <string name="layout_button_reset_hud">Reset HUD</string>
+
+    <string name="layout_title_status">Status</string>
+
+    <string name="layout_title_settings">Settings</string>
+    <string name="layout_element_show_speed">Show Speed</string>
+    <string name="layout_element_auto_brightness">Auto Brightness</string>
+    <string name="layout_title_when_navigating">When Navigating</string>
+    <string name="layout_element_show_eta">Show Arrival Time (ETA)</string>
+
+    <string name="layout_title_screen_analysis">Screen Analysis</string>
+    <string name="layout_element_traffic_lane_det">Screen analysis: lanes, limit, ETA and trip data</string>
+
+    <string name="layout_title_session">Background session</string>
+    <string name="layout_element_auto_start_navigation">Auto-start with Google Maps or AutoMapa navigation</string>
+
+    <string name="layout_title_navigation_diagnostics">Navigation diagnostics</string>
+    <string name="layout_element_navigation_diagnostics">Record Google Maps, Sygic and AutoMapa notifications</string>
+    <string name="layout_navigation_diagnostics_description">Local diagnostic recording for updating navigation parsers. The raw data may contain street names, route details and destinations. Nothing is uploaded automatically.</string>
+    <string name="layout_navigation_diagnostics_inactive">Recording is off</string>
+    <string name="layout_navigation_diagnostics_active">Recording is active — run several sample routes and maneuvers</string>
+    <string name="layout_button_export_diagnostics">Export diagnostics (ZIP)</string>
+    <string name="layout_button_clear_diagnostics">Clear diagnostics</string>
+    <string name="title_enable_navigation_diagnostics">Enable diagnostic recording?</string>
+    <string name="message_enable_navigation_diagnostics">Notification contents can include private data such as street names, your route and destination. Data stays on this phone until you explicitly export it.</string>
+    <string name="action_enable">Enable</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="message_diagnostics_empty">There are no diagnostic samples to export yet.</string>
+    <string name="message_diagnostics_export_failed">Could not export diagnostics.</string>
+    <string name="message_diagnostics_cleared">Diagnostic samples were cleared.</string>
+    <string name="message_diagnostics_clear_failed">Could not clear all diagnostic samples.</string>
+    <string name="title_clear_navigation_diagnostics">Clear diagnostic data?</string>
+    <string name="message_clear_navigation_diagnostics">All locally recorded notification samples and exported ZIP files will be deleted.</string>
+    <string name="action_clear">Clear</string>
+    <string name="share_navigation_diagnostics">Share navigation diagnostics</string>
+
+    <string name="layout_title_design">Design</string>
+    <string name="layout_element_darkmode_auto">Follow System Dark Mode</string>
+    <string name="layout_element_darkmode_man">Use Dark Mode</string>
+
+    <string name="layout_title_arrow_type">Arrow Type</string>
+    <string name="layout_element_arrow_type_v1">Arrow V1</string>
+    <string name="layout_element_arrow_type_v2">Arrow V2</string>
+
+
+    <!-- Messages and variable UI text -->
+    <string name="layout_seekbar_brightness">Brightness %1$d%%</string>
+    <string name="message_enable_notification_access">Please enable notification access for %1$s.
+                        \n\nThis app uses notifications to read navigation information.</string>
+    <string name="title_enable_notification_access">Notification Access</string>
+    <string name="layout_element_hud_success_connected">\'%1$s\' connected</string>
+    <string name="layout_element_hud_disconnected">HUD disconnected</string>
+    <string name="layout_element_hud_con_failed">HUD connection failed</string>
+    <string name="message_enable_location_access">To show GPS speed on the Garmin HUD, allow location access.</string>
+    <string name="title_background_location_access">Background location</string>
+    <string name="message_enable_background_location_access">To show GPS speed when navigation starts automatically, open Permissions, choose Location, and select Allow all the time.</string>
+    <string name="action_open_settings">Open settings</string>
+    <string name="message_bt_not_available">Bluetooth is not available</string>
+    <string name="message_bt_not_enabled">Bluetooth is not enabled.</string>
+
+    <string name="hud_service_channel">HUD connection</string>
+    <string name="hud_service_title">Garminuino is active</string>
+    <string name="hud_service_description">Maintaining the HUD connection in the background</string>
+    <string name="location_service_channel">Speed location</string>
+    <string name="location_service_title">Speed display is active</string>
+    <string name="location_service_description">Reading GPS speed for the HUD in the background</string>
+    <string name="capture_service_channel">Navigation screen analysis</string>
+    <string name="capture_service_title">Screen analysis is active</string>
+    <string name="capture_service_description">Reading lanes and on-screen navigation data</string>
+    <string name="message_screen_analysis_failed">Screen analysis could not be started. Turn it on again to retry.</string>
+
+
+</resources>

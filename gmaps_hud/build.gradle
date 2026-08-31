@@ -1,0 +1,80 @@
+apply plugin: 'com.android.application'
+
+def versionProperties = new Properties()
+def versionPropertiesFile = file('version.properties')
+if (!versionPropertiesFile.canRead()) {
+    throw new GradleException('Could not read version.properties')
+}
+versionProperties.load(new FileInputStream(versionPropertiesFile))
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.canRead()) {
+    keystoreProperties.load(keystorePropertiesFile.newDataInputStream())
+}
+
+android {
+    namespace 'sky4s.garminhud.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'sky4s.garminhud.app'
+        minSdk 33
+        targetSdk 36
+        versionName versionProperties['VERSION_NAME']
+        versionCode versionProperties['VERSION_CODE'].toInteger()
+    }
+
+    if (keystoreProperties['keystore.path']) {
+        signingConfigs {
+            release {
+                storeFile file(keystoreProperties['keystore.path'])
+                storePassword keystoreProperties['keystore.password']
+                keyAlias keystoreProperties['keystore.alias']
+                keyPassword keystoreProperties['keystore.alias_password']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.txt'
+            if (keystoreProperties['keystore.path']) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    lint {
+        // The upstream project ships several deliberately partial locale files.
+        disable 'MissingTranslation'
+    }
+}
+
+dependencies {
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
+    // Bundled Latin model: AutoMapa header OCR is available immediately and does not depend on a
+    // model download during a trip.
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
+
+    implementation 'androidx.legacy:legacy-support-v13:1.0.0'
+    implementation 'androidx.drawerlayout:drawerlayout:1.2.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.media:media:1.6.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+
+    implementation project(':bt-spp-library')
+    implementation 'uk.co.samuelwall:material-tap-target-prompt:3.3.2'
+    testImplementation 'junit:junit:4.13.2'
+}
