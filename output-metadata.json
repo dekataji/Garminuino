@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "artifactType": {
+    "type": "APK",
+    "kind": "Directory"
+  },
+  "applicationId": "sky4s.garminhud.app",
+  "variantName": "debug",
+  "elements": [
+    {
+      "type": "SINGLE",
+      "filters": [],
+      "attributes": [],
+      "versionCode": 2416,
+      "versionName": "0.9.16",
+      "outputFile": "gmaps_hud-debug.apk"
+    }
+  ],
+  "elementType": "File",
+  "minSdkVersionForDexing": 33
+}
