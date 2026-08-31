@@ -1,0 +1,24 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="app.akexorcist.bluetotohspp.library" >
+4
+5    <uses-sdk android:minSdkVersion="23" />
+6
+7    <uses-permission android:name="android.permission.BLUETOOTH" />
+7-->E:\! Codex\Garminuino-master\bt-spp-library\src\main\AndroidManifest.xml:3:5-68
+7-->E:\! Codex\Garminuino-master\bt-spp-library\src\main\AndroidManifest.xml:3:22-65
+8    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+8-->E:\! Codex\Garminuino-master\bt-spp-library\src\main\AndroidManifest.xml:4:5-74
+8-->E:\! Codex\Garminuino-master\bt-spp-library\src\main\AndroidManifest.xml:4:22-71
+9
+10    <application>
+10-->E:\! Codex\Garminuino-master\bt-spp-library\src\main\AndroidManifest.xml:6:5-10:19
+11        <activity
+11-->E:\! Codex\Garminuino-master\bt-spp-library\src\main\AndroidManifest.xml:7:9-9:40
+12            android:name="app.akexorcist.bluetotohspp.library.DeviceList"
+12-->E:\! Codex\Garminuino-master\bt-spp-library\src\main\AndroidManifest.xml:8:13-74
+13            android:exported="false" />
+13-->E:\! Codex\Garminuino-master\bt-spp-library\src\main\AndroidManifest.xml:9:13-37
+14    </application>
+15
+16</manifest>

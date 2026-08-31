@@ -1,0 +1,14 @@
+R_DEF: Internal format may change without notice
+local
+dimen bluetooth_spp_padding
+dimen bluetooth_spp_text_size
+id button_scan
+id list_devices
+layout device_list
+layout device_name
+string button_scan_for_devices
+string message_device_name_mismatch
+string message_no_devices_found
+string message_scanning_for_devices
+string message_select_a_device
+string title_bluetooth_devices
