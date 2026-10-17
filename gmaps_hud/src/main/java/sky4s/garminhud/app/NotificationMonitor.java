@@ -152,6 +152,17 @@ public class NotificationMonitor extends NotificationListenerService {
         return sStaticInstance;
     }
 
+    /**
+     * True only while the system is actually bound to this listener.
+     * "Notification access granted" in Settings does NOT imply this —
+     * the system still has to bind (it cannot if the service is not exported).
+     */
+    private static volatile boolean sListenerConnected = false;
+
+    public static boolean isListenerConnected() {
+        return sListenerConnected;
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -224,12 +235,14 @@ public class NotificationMonitor extends NotificationListenerService {
             mExecutor.shutdown();
         }
         sStaticInstance = null;
+        sListenerConnected = false;
         super.onDestroy();
     }
 
     @Override
     public void onListenerConnected() {
         super.onListenerConnected();
+        sListenerConnected = true;
         NavigationDiagnostics.recordLifecycle(this, "notification_listener_connected");
         sHud = HudSessionManager.getInstance(this).getHud();
         mMonitorHandler.post(() -> {
@@ -268,6 +281,7 @@ public class NotificationMonitor extends NotificationListenerService {
     @Override
     public void onListenerDisconnected() {
         super.onListenerDisconnected();
+        sListenerConnected = false;
         NavigationDiagnostics.recordLifecycle(this, "notification_listener_disconnected");
         requestRebind(new android.content.ComponentName(this, NotificationMonitor.class));
     }
