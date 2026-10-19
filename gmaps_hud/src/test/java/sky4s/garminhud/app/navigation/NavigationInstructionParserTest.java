@@ -60,4 +60,78 @@ public class NavigationInstructionParserTest {
         assertEquals(Arrow.ArrivalsRight, result.maneuver);
         assertEquals(10, result.remainingMinutes.intValue());
     }
+
+    @Test
+    public void parsesCompoundThenInstructionAsNextTurnPreview() {
+        NavigationInstructionParser.Result result = NavigationInstructionParser.parseGoogle(
+                "Turn left onto Main St, then turn right onto Oak Ave",
+                "500 m",
+                "",
+                0,
+                0,
+                12,
+                0);
+
+        assertEquals(Arrow.Left, result.maneuver);
+        assertEquals(Arrow.Right, result.nextManeuver);
+    }
+
+    @Test
+    public void thenClauseDoesNotCorruptCurrentManeuver() {
+        // Without the split, "left" in the tail would win over "straight" in the head.
+        NavigationInstructionParser.Result result = NavigationInstructionParser.parseGoogle(
+                "Continue straight, then turn left onto Oak Ave",
+                "1.2 km",
+                "",
+                0,
+                0,
+                12,
+                0);
+
+        assertEquals(Arrow.Straight, result.maneuver);
+        assertEquals(Arrow.Left, result.nextManeuver);
+    }
+
+    @Test
+    public void noThenClauseMeansNoPreview() {
+        NavigationInstructionParser.Result result = NavigationInstructionParser.parseGoogle(
+                "Turn right onto Oak Ave",
+                "200 m",
+                "",
+                0,
+                0,
+                12,
+                0);
+
+        assertEquals(Arrow.Right, result.maneuver);
+        assertEquals(Arrow.None, result.nextManeuver);
+    }
+
+    @Test
+    public void parsesLeftLaneGuidance() {
+        NavigationInstructionParser.LaneGuidance guidance =
+                NavigationInstructionParser.parseLaneGuidance(
+                        "Use the left 2 lanes to turn left onto Main St");
+
+        assertNotNull(guidance);
+        // 2 lanes centered: InnerLeft(0x10) + InnerRight(0x08); both recommended.
+        assertEquals(0x18, guidance.outlineMask);
+        assertEquals(0x18, guidance.arrowMask);
+    }
+
+    @Test
+    public void parsesRightLaneGuidance() {
+        NavigationInstructionParser.LaneGuidance guidance =
+                NavigationInstructionParser.parseLaneGuidance(
+                        "Stay in the right lane to take the exit");
+
+        assertNotNull(guidance);
+        assertEquals(guidance.outlineMask, guidance.arrowMask);
+    }
+
+    @Test
+    public void noLaneHintMeansNullGuidance() {
+        assertEquals(null, NavigationInstructionParser.parseLaneGuidance(
+                "Turn left onto Main St"));
+    }
 }
