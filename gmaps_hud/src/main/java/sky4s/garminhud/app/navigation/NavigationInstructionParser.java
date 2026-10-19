@@ -6,6 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import sky4s.garminhud.Arrow;
+import sky4s.garminhud.eLane;
 
 /**
  * Parses the public text fields exposed by navigation notifications.  This deliberately does not
@@ -17,6 +18,13 @@ public final class NavigationInstructionParser {
     private static final Pattern LEADING_DISTANCE = Pattern.compile(
             "(?iu)^\\s*(\\d+(?:[\\.,]\\d+)?)\\s*(km|m|mi|ft|metr(?:y|ow|ów|a)?)\\s*(?:[·•\\-–—]|$)");
     private static final Pattern CLOCK = Pattern.compile("(?<!\\d)([01]?\\d|2[0-3]):([0-5]\\d)(?!\\d)");
+    // Google Maps merges two close maneuvers into one notification, e.g.
+    // "Turn left onto Main St, then turn right onto Oak Ave".
+    private static final Pattern THEN_CLAUSE = Pattern.compile("(?iu)(?:,|;)?\\s+then\\s+(.+?)\\s*$");
+    // Lane hints embedded in the instruction, e.g. "Use the left 2 lanes to turn left",
+    // "Stay in the right lane to take the exit".
+    private static final Pattern LANE_HINT = Pattern.compile(
+            "(?iu)\\b(?:use|stay in|keep to)\\s+the\\s+(left|right|middle)\\s+(\\d+)?\\s*lanes?\\b");
 
     private NavigationInstructionParser() {
     }
@@ -30,16 +38,30 @@ public final class NavigationInstructionParser {
             distance = parseDistance(safeTitle);
         }
 
+        // Split a compound "X, then Y" instruction so the current maneuver is parsed
+        // from X only; Y becomes the next-turn preview.
+        String[] thenSplit = splitThenClause(instruction);
+        String currentInstruction = thenSplit[0];
+        String thenClause = thenSplit[1];
+
         Clock eta = parseClock(etaText);
         Integer remainingMinutes = eta == null
                 ? null : minutesUntil(nowHour, nowMinute, eta.hour, eta.minute);
         Integer remainingDistanceMetres = progressMax > 0
                 ? Math.max(0, progressMax - Math.max(0, progress)) : null;
 
+        Arrow maneuver = parseManeuver(currentInstruction);
+        Arrow nextManeuver = thenClause == null ? Arrow.None : parseManeuver(thenClause);
+        if (nextManeuver == maneuver) {
+            nextManeuver = Arrow.None;
+        }
+
         return new Result(
                 instruction,
                 distance,
-                parseManeuver(instruction),
+                maneuver,
+                nextManeuver,
+                parseLaneGuidance(currentInstruction),
                 eta,
                 remainingMinutes,
                 remainingDistanceMetres,
@@ -48,14 +70,102 @@ public final class NavigationInstructionParser {
 
     public static Result parseAutoMapa(String title) {
         String safeTitle = clean(title);
+        String[] thenSplit = splitThenClause(stripAutoMapaDistance(safeTitle));
+        Arrow maneuver = parseManeuver(thenSplit[0]);
+        Arrow nextManeuver = thenSplit[1] == null ? Arrow.None : parseManeuver(thenSplit[1]);
+        if (nextManeuver == maneuver) {
+            nextManeuver = Arrow.None;
+        }
         return new Result(
                 stripAutoMapaDistance(safeTitle),
                 parseDistance(safeTitle),
-                parseManeuver(safeTitle),
+                maneuver,
+                nextManeuver,
+                parseLaneGuidance(thenSplit[0]),
                 null,
                 null,
                 null,
                 isRerouting(safeTitle));
+    }
+
+    /**
+     * Splits "X, then Y" into {"X", "Y"}. Returns {instruction, null} when there is no
+     * "then" clause.
+     */
+    static String[] splitThenClause(String instruction) {
+        Matcher matcher = THEN_CLAUSE.matcher(clean(instruction));
+        if (!matcher.find()) {
+            return new String[]{instruction, null};
+        }
+        String head = instruction.substring(0, matcher.start()).trim();
+        String tail = matcher.group(1).trim();
+        if (head.isEmpty() || tail.isEmpty()) {
+            return new String[]{instruction, null};
+        }
+        return new String[]{head, tail};
+    }
+
+    /**
+     * Extracts lane guidance from hints like "Use the left 2 lanes to ...".
+     * Returns null when the instruction carries no usable lane hint.
+     */
+    public static LaneGuidance parseLaneGuidance(String instruction) {
+        Matcher matcher = LANE_HINT.matcher(fold(instruction));
+        if (!matcher.find()) {
+            return null;
+        }
+        String side = matcher.group(1).toLowerCase(Locale.ROOT);
+        String countGroup = matcher.group(2);
+        int recommendedCount = countGroup == null ? 1 : safeParseInt(countGroup, 1);
+        if (recommendedCount < 1 || recommendedCount > 6) {
+            return null;
+        }
+        // Without a total lane count in the text, model the road as exactly the
+        // recommended lanes; the outline then matches the recommendation.
+        int totalLanes = recommendedCount;
+        int firstRecommended;
+        if ("left".equals(side)) {
+            firstRecommended = 0;
+        } else if ("right".equals(side)) {
+            firstRecommended = totalLanes - recommendedCount;
+        } else {
+            // "middle": center the recommendation.
+            firstRecommended = Math.max(0, (totalLanes - recommendedCount) / 2);
+        }
+        int outlineMask = 0;
+        int arrowMask = 0;
+        for (int i = 0; i < totalLanes; i++) {
+            int bit = laneBit(i, totalLanes);
+            outlineMask |= bit;
+            if (i >= firstRecommended && i < firstRecommended + recommendedCount) {
+                arrowMask |= bit;
+            }
+        }
+        if (outlineMask == 0 || arrowMask == 0) {
+            return null;
+        }
+        return new LaneGuidance(outlineMask, arrowMask);
+    }
+
+    /**
+     * Maps a 0-based lane index (from the left) to an eLane bit, using the same
+     * left-to-right, centered convention as the screen-based lane detectors.
+     */
+    static int laneBit(int indexFromLeft, int totalLanes) {
+        int start = totalLanes >= 5 ? 0 : totalLanes >= 3 ? 1 : 2;
+        int x = start + indexFromLeft;
+        if (x < 0 || x > 6) {
+            return 0;
+        }
+        return eLane.OuterLeft.value >> x;
+    }
+
+    private static int safeParseInt(String value, int fallback) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 
     public static Arrow parseManeuver(String instruction) {
@@ -201,16 +311,21 @@ public final class NavigationInstructionParser {
         public final String instruction;
         public final Distance distanceToTurn;
         public final Arrow maneuver;
+        public final Arrow nextManeuver;
+        public final LaneGuidance laneGuidance;
         public final Clock arrival;
         public final Integer remainingMinutes;
         public final Integer remainingDistanceMetres;
         public final boolean rerouting;
 
-        Result(String instruction, Distance distanceToTurn, Arrow maneuver, Clock arrival,
+        Result(String instruction, Distance distanceToTurn, Arrow maneuver, Arrow nextManeuver,
+               LaneGuidance laneGuidance, Clock arrival,
                Integer remainingMinutes, Integer remainingDistanceMetres, boolean rerouting) {
             this.instruction = instruction;
             this.distanceToTurn = distanceToTurn;
             this.maneuver = maneuver;
+            this.nextManeuver = nextManeuver;
+            this.laneGuidance = laneGuidance;
             this.arrival = arrival;
             this.remainingMinutes = remainingMinutes;
             this.remainingDistanceMetres = remainingDistanceMetres;
@@ -219,6 +334,28 @@ public final class NavigationInstructionParser {
 
         public boolean hasGuidance() {
             return maneuver != Arrow.None || distanceToTurn != null || arrival != null;
+        }
+
+        public boolean hasNextTurnPreview() {
+            return nextManeuver != null && nextManeuver != Arrow.None;
+        }
+    }
+
+    /**
+     * Lane guidance as HUD bitmasks: {@code outlineMask} marks every lane, {@code arrowMask}
+     * marks the recommended lanes. Masks use {@link eLane} bit values.
+     */
+    public static final class LaneGuidance {
+        public final int outlineMask;
+        public final int arrowMask;
+
+        LaneGuidance(int outlineMask, int arrowMask) {
+            this.outlineMask = outlineMask;
+            this.arrowMask = arrowMask;
+        }
+
+        public boolean hasRecommendation() {
+            return arrowMask != 0;
         }
     }
 
