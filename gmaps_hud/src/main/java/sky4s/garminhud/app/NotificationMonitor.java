@@ -105,6 +105,20 @@ public class NotificationMonitor extends NotificationListenerService {
     private volatile ArrowV2 mFoundArrowV2 = ArrowV2.None;
     private ArrowV2 mLastFoundArrowV2 = ArrowV2.None;
 
+    // Next-turn preview: parsed from compound "X, then Y" instructions. The HUD alternates
+    // between the current and the next maneuver so the driver sees what follows.
+    private volatile Arrow mNextManeuver = Arrow.None;
+    private volatile ArrowV2 mNextManeuverV2 = ArrowV2.None;
+    private volatile boolean mShowingNextPreview = false;
+    private static final long NEXT_PREVIEW_INTERVAL_MS = 2500L;
+    private boolean mNextTurnPreviewEnabled = true;
+    private boolean mTextLaneGuidanceEnabled = true;
+
+    // Lane guidance parsed from notification text ("Use the left 2 lanes ...").
+    // -1 means no text lane state was ever sent (screen detector owns the lanes then).
+    private int mLastTextLaneOutline = -1;
+    private int mLastTextLaneArrow = -1;
+
     private volatile String mDistanceNum = null;
     private static volatile String mDistanceUnit = null;
     private String mRemainingHours = null;
@@ -169,6 +183,10 @@ public class NotificationMonitor extends NotificationListenerService {
         sHud = HudSessionManager.getInstance(this).getHud();
         mShowETA = getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE)
                 .getBoolean(getString(R.string.option_show_eta), false);
+        mNextTurnPreviewEnabled = getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE)
+                .getBoolean(getString(R.string.option_next_turn_preview), true);
+        mTextLaneGuidanceEnabled = getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE)
+                .getBoolean(getString(R.string.option_text_lane_guidance), true);
         mImageDir = getExternalCacheDir() == null
                 ? getCacheDir().getAbsolutePath()
                 : getExternalCacheDir().getAbsolutePath() + "/screenshots/";
@@ -228,6 +246,7 @@ public class NotificationMonitor extends NotificationListenerService {
         mMonitorHandler.removeCallbacks(mStopNavigationSession);
         mMonitorHandler.removeCallbacks(mRetryArrowUpdate);
         mMonitorHandler.removeCallbacks(mRetryDistanceUpdate);
+        mMonitorHandler.removeCallbacks(mNextPreviewAlternator);
         if (mMsgReceiver != null) {
             unregisterReceiver(mMsgReceiver);
         }
@@ -881,7 +900,9 @@ public class NotificationMonitor extends NotificationListenerService {
         String notifySourceString = mNotifySource == 0 ? "gmaps"
                 : mNotifySource == 1 ? "gmaps go"
                 : mNotifySource == 2 ? "automapa" : "unknown";
+        String nextArrowString = mArrowTypeV2 ? mNextManeuverV2.toString() : mNextManeuver.toString();
         String notifyMessage = arrowString + "(" + (mArrowTypeV2 ? "v2:" : "v1:") + sArrowMinSad + ") " +
+                "next:" + nextArrowString + " " +
                 mDistanceNum + "/" + mDistanceUnit + " " +
                 (null == mRemainingHours ? 0 : mRemainingHours) + ":" + mRemainingMinutes + " " +
                 mRemainingDistance + mRemainingDistanceUnits + " " +
@@ -907,6 +928,11 @@ public class NotificationMonitor extends NotificationListenerService {
         return sActiveNavigationPackage;
     }
 
+    /** True while a supported navigation app is actively guiding. */
+    public boolean isNavigating() {
+        return mIsNavigating;
+    }
+
     private final Runnable mStopNavigationSession = () -> {
         if (hasActiveSupportedNavigation()) {
             return;
@@ -916,6 +942,14 @@ public class NotificationMonitor extends NotificationListenerService {
         sActiveNavigationPackage = null;
         HudNavigationState.clearAutoMapaSpeedLimit();
         mSuppressAutoStartUntilNavigationEnds = false;
+        stopNextTurnPreview();
+        mNextManeuver = Arrow.None;
+        mNextManeuverV2 = ArrowV2.None;
+        if (sHud != null && mLastTextLaneOutline != -1) {
+            sHud.setLanes((char) 0, (char) 0);
+            mLastTextLaneOutline = -1;
+            mLastTextLaneArrow = -1;
+        }
         if (mPostman != null) {
             // AutoMapa replaces its ongoing notification instead of updating it in place on
             // some releases. Only announce the end after the grace period above confirmed that
@@ -1150,6 +1184,8 @@ public class NotificationMonitor extends NotificationListenerService {
         }
 
         setParsedManeuver(result.maneuver);
+        setParsedNextManeuver(result.nextManeuver);
+        applyTextLaneGuidance(result.laneGuidance, result.maneuver);
 
         if (!includesTripSummary) {
             mRemainingHours = null;
@@ -1184,6 +1220,53 @@ public class NotificationMonitor extends NotificationListenerService {
             mFoundArrowV2 = ArrowV2.None;
         }
         mLastFoundArrowV2 = mFoundArrowV2;
+    }
+
+    private void setParsedNextManeuver(Arrow nextManeuver) {
+        Arrow next = nextManeuver == null ? Arrow.None : nextManeuver;
+        boolean changed = next != mNextManeuver;
+        mNextManeuver = next;
+        try {
+            mNextManeuverV2 = ArrowV2.valueOf(next.name());
+        } catch (IllegalArgumentException exception) {
+            mNextManeuverV2 = ArrowV2.None;
+        }
+        if (changed) {
+            if (next == Arrow.None) {
+                stopNextTurnPreview();
+            } else {
+                startNextTurnPreview();
+            }
+        }
+    }
+
+    /**
+     * Sends lane guidance parsed from notification text to the HUD. This source works even
+     * when screen capture is off (phone locked / Maps in background), complementing the
+     * screen-based lane detector, which keeps sending its own richer state when active.
+     */
+    private void applyTextLaneGuidance(NavigationInstructionParser.LaneGuidance guidance,
+                                      Arrow maneuver) {
+        if (sHud == null || !mTextLaneGuidanceEnabled) {
+            return;
+        }
+        if (guidance != null && guidance.hasRecommendation()) {
+            if (guidance.outlineMask != mLastTextLaneOutline
+                    || guidance.arrowMask != mLastTextLaneArrow) {
+                sHud.setLanes((char) guidance.arrowMask, (char) guidance.outlineMask);
+                mLastTextLaneOutline = guidance.outlineMask;
+                mLastTextLaneArrow = guidance.arrowMask;
+                logi("Text lane guidance sent: outline=0x"
+                        + Integer.toHexString(guidance.outlineMask)
+                        + " arrow=0x" + Integer.toHexString(guidance.arrowMask));
+            }
+        } else if (mLastTextLaneOutline != -1) {
+            // Lane hint gone (maneuver changed): clear only if we were the last text sender,
+            // so we never stomp a live screen-detector state with no information.
+            sHud.setLanes((char) 0, (char) 0);
+            mLastTextLaneOutline = -1;
+            mLastTextLaneArrow = -1;
+        }
     }
 
     private static eUnits get_eUnits(String unit) {
@@ -1723,6 +1806,56 @@ public class NotificationMonitor extends NotificationListenerService {
         logi("Arrow retry " + currentArrowName() + " sent: " + (sent ? '1' : '0'));
         if (!sent) scheduleArrowRetry();
     };
+
+    /**
+     * Alternates the HUD arrow between the current maneuver and the parsed next-turn
+     * preview. Any real navigation update snaps the display back to the current maneuver
+     * via sendCurrentArrow(); the alternator then resumes from there.
+     */
+    private final Runnable mNextPreviewAlternator = new Runnable() {
+        @Override
+        public void run() {
+            if (!mNextTurnPreviewEnabled || sHud == null) {
+                return;
+            }
+            ArrowV2 nextV2 = mNextManeuverV2;
+            Arrow nextV1 = mNextManeuver;
+            boolean hasPreview = mArrowTypeV2
+                    ? nextV2 != null && nextV2 != ArrowV2.None
+                    : nextV1 != null && nextV1 != Arrow.None;
+            if (!hasPreview) {
+                return;
+            }
+            mShowingNextPreview = !mShowingNextPreview;
+            if (mShowingNextPreview) {
+                if (mArrowTypeV2) {
+                    updateArrow(nextV2);
+                } else {
+                    updateArrow(nextV1);
+                }
+                logi("Next-turn preview showing: " + (mArrowTypeV2 ? nextV2 : nextV1));
+            } else {
+                sendCurrentArrow();
+            }
+            mMonitorHandler.postDelayed(this, NEXT_PREVIEW_INTERVAL_MS);
+        }
+    };
+
+    private void startNextTurnPreview() {
+        stopNextTurnPreview();
+        if (!mNextTurnPreviewEnabled) {
+            return;
+        }
+        mMonitorHandler.postDelayed(mNextPreviewAlternator, NEXT_PREVIEW_INTERVAL_MS);
+    }
+
+    private void stopNextTurnPreview() {
+        mMonitorHandler.removeCallbacks(mNextPreviewAlternator);
+        if (mShowingNextPreview) {
+            mShowingNextPreview = false;
+            sendCurrentArrow();
+        }
+    }
 
     private void sendCurrentArrow() {
         if (mArrowTypeV2) {
