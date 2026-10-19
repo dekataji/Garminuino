@@ -21,6 +21,7 @@ public class HudConnectionService extends Service {
     private static final String CHANNEL_ID = "hud_connection";
     private static final int NOTIFICATION_ID = 1001;
     private static volatile boolean sRunning;
+    private HudIdleClock mIdleClock;
 
     public static boolean isRunning() {
         return sRunning;
@@ -54,6 +55,9 @@ public class HudConnectionService extends Service {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
 
         HudSessionManager.getInstance(this).initialize();
+
+        mIdleClock = new HudIdleClock(this);
+        mIdleClock.start();
     }
 
     @Override
@@ -75,6 +79,10 @@ public class HudConnectionService extends Service {
     @Override
     public void onDestroy() {
         sRunning = false;
+        if (mIdleClock != null) {
+            mIdleClock.stop();
+            mIdleClock = null;
+        }
         HudSessionManager.getInstance(this).shutdown();
         super.onDestroy();
     }
