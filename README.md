@@ -32,9 +32,13 @@ This project is a modernized fork of the original [Garminuino](https://github.co
 - Remaining route distance and travel time when provided by the navigation app.
 - Estimated arrival time (ETA).
 - Lane guidance with up to six lanes.
-- AutoMapa speed-limit recognition from the screen.
+- Text-based lane guidance parsed from Google Maps notifications ("Use the left 2 lanes"), shown even with the screen off.
+- Next-turn preview: compound instructions ("Turn left, then turn right") alternate the HUD arrow between the current and next manoeuvre.
+- Idle clock: the HUD shows the current time whenever it is connected but no navigation is active.
 - Automatic Bluetooth connection to the previously used Garmin HUD.
 - Automatic reconnection after the HUD is disconnected and becomes available again.
+- Automatic service start on phone boot (reconnects to the remembered HUD without opening the app).
+- AutoMapa speed-limit recognition from the screen.
 - Optional automatic startup when supported navigation begins.
 - Automatic shutdown after navigation ends when the application was auto-started.
 - Automatic or manual HUD brightness control.
@@ -93,6 +97,12 @@ Supported instructions include, among others:
 
 Optional screen analysis supplements the notification data with visual information such as lane guidance and congestion state. The implementation also contains a compatibility fallback for older Google Maps notification formats, but current notification data is preferred.
 
+### Text lane guidance and next-turn preview
+
+When a Google Maps instruction contains lane hints such as "Use the left 2 lanes", Garminuino parses them from the notification text and shows the lane guidance on the HUD directly, without requiring screen analysis. This works even with the phone screen off.
+
+Compound instructions such as "Turn left onto Main St, then turn right onto Oak Ave" are split into the current manoeuvre and the following one. The HUD alternates between the two arrows every few seconds, giving an advance view of the next turn.
+
 ## AutoMapa support
 
 AutoMapa does not expose every item needed by the HUD in a stable structured interface. Garminuino therefore combines:
@@ -121,6 +131,14 @@ When **Auto-start with navigation** is enabled:
 4. Closing the navigation application stops Garminuino's active services, disconnects the HUD and removes the application task after a short grace period.
 
 When automatic startup is disabled, Garminuino can be opened and closed manually. In this mode, stopping AutoMapa or Google Maps does not independently control the lifetime of the application.
+
+## Idle clock and automatic connection
+
+When the phone is connected to the Garmin HUD but no navigation is active, the HUD shows the current time. The clock updates every minute and yields immediately when navigation starts. This makes the HUD useful without starting a navigation application first.
+
+On phone boot, Garminuino starts its connection service automatically and reconnects to the previously paired HUD, so the HUD's "PAIR" indicator clears without opening the application. (The "PAIR" message itself is shown by the HUD firmware when no Bluetooth link exists and cannot be customized by any application.)
+
+Both behaviors can be disabled in the application settings: **Auto-connect on boot** and **Idle clock**.
 
 ## First-time setup
 
