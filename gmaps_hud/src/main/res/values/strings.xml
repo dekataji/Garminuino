@@ -105,5 +105,37 @@
     <string name="capture_service_description">Reading lanes and on-screen navigation data</string>
     <string name="message_screen_analysis_failed">Screen analysis could not be started. Turn it on again to retry.</string>
 
+    <!-- Settings screen -->
+    <string name="settings_section_connection">Connection</string>
+    <string name="hud_status_connected">Connected</string>
+    <string name="hud_status_disconnected">Disconnected</string>
+    <string name="hud_status_failed">Connection failed</string>
+    <string name="hud_device_unknown">No device paired yet</string>
+    <string name="layout_button_disconnect_hud">Disconnect</string>
+
+    <string name="settings_section_navigation">Navigation</string>
+    <string name="layout_element_lane_guidance">Lane guidance</string>
+    <string name="layout_element_roundabout_exit_numbers">Roundabout exit numbers</string>
+    <string name="layout_element_reroute_indicator">Rerouting indicator</string>
+    <string name="layout_element_eta_display_mode">Time display</string>
+    <string-array name="eta_display_modes">
+        <item>Off</item>
+        <item>Remaining time</item>
+        <item>Arrival time</item>
+        <item>Cycle</item>
+    </string-array>
+
+    <string name="settings_section_safety">Safety</string>
+    <string name="layout_element_overspeed_alert">Overspeed alert</string>
+    <string name="layout_overspeed_threshold">Alert above limit + %1$d km/h</string>
+    <string name="layout_element_speed_camera_alerts">Speed camera alerts</string>
+
+    <string name="settings_section_display">Display</string>
+    <string name="layout_element_idle_clock">Idle clock</string>
+
+    <string name="settings_section_session">Session</string>
+    <string name="settings_section_advanced">Advanced</string>
+    <string name="settings_section_appearance">Appearance</string>
+
 
 </resources>
