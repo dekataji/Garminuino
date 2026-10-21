@@ -1,4 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="horizontal_line">#DFDFDF</color>
+
+    <!-- OLED dark palette (ui-ux-pro-max: dark-mode-oled) -->
+    <!-- Deep black background for OLED power saving + night driving -->
+    <color name="oled_background">#000000</color>
+    <color name="oled_surface">#121212</color>
+    <color name="oled_surface_variant">#1E1E1E</color>
+    <color name="oled_border">#2A2A2A</color>
+
+    <!-- HUD cyan accent: high visibility at night, matches Garmin HUD aesthetic -->
+    <color name="accent_cyan">#00E5FF</color>
+    <color name="accent_cyan_dim">#00838F</color>
+
+    <!-- Text: 7:1+ contrast on black per skill accessibility checklist -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="text_hint">#757575</color>
+
+    <!-- Status pill colors -->
+    <color name="status_connected">#4CAF50</color>
+    <color name="status_connecting">#FFC107</color>
+    <color name="status_disconnected">#F44336</color>
 </resources>
