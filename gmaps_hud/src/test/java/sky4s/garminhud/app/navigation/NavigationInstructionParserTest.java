@@ -2,6 +2,7 @@ package sky4s.garminhud.app.navigation;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
@@ -133,5 +134,41 @@ public class NavigationInstructionParserTest {
     public void noLaneHintMeansNullGuidance() {
         assertEquals(null, NavigationInstructionParser.parseLaneGuidance(
                 "Turn left onto Main St"));
+    }
+
+    @Test
+    public void parsesRoundaboutExitEnglish() {
+        assertEquals(Integer.valueOf(2), NavigationInstructionParser.parseRoundaboutExit(
+                "At the roundabout, take the 2nd exit onto Main St"));
+        assertEquals(Integer.valueOf(1), NavigationInstructionParser.parseRoundaboutExit(
+                "take 1st exit"));
+    }
+
+    @Test
+    public void parsesRoundaboutExitPolish() {
+        assertEquals(Integer.valueOf(3), NavigationInstructionParser.parseRoundaboutExit(
+                "Na rondzie zjedź 3. zjazdem"));
+    }
+
+    @Test
+    public void noExitNumberMeansNull() {
+        assertNull(NavigationInstructionParser.parseRoundaboutExit(
+                "Turn left onto Main St"));
+        assertNull(NavigationInstructionParser.parseRoundaboutExit(
+                "At the roundabout, continue straight"));
+    }
+
+    @Test
+    public void roundaboutExitPopulatesResult() {
+        NavigationInstructionParser.Result result = NavigationInstructionParser.parseGoogle(
+                "At the roundabout, take the 2nd exit onto Main St",
+                "200 m",
+                "",
+                0,
+                0,
+                12,
+                0);
+
+        assertEquals(Integer.valueOf(2), result.roundaboutExit);
     }
 }
