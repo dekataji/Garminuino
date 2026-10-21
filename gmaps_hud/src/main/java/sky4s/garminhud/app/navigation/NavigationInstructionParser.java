@@ -25,6 +25,12 @@ public final class NavigationInstructionParser {
     // "Stay in the right lane to take the exit".
     private static final Pattern LANE_HINT = Pattern.compile(
             "(?iu)\\b(?:use|stay in|keep to)\\s+the\\s+(left|right|middle)\\s+(\\d+)?\\s*lanes?\\b");
+    // Roundabout exit numbers, e.g. "take the 2nd exit" / "take 2nd exit" (EN),
+    // "zjedź 3. zjazdem" / "zjazd nr 3" (PL).
+    private static final Pattern ROUNDABOUT_EXIT_EN = Pattern.compile(
+            "(?iu)\\btake\\s+(?:the\\s+)?(\\d+)(?:st|nd|rd|th)?\\s+exit\\b");
+    private static final Pattern ROUNDABOUT_EXIT_PL = Pattern.compile(
+            "(?iu)(?:(\\d+)\\.\\s*zjazd|zjazd\\s*(?:nr\\s*\\.?\\s*)?(\\d+))");
 
     private NavigationInstructionParser() {
     }
@@ -65,7 +71,8 @@ public final class NavigationInstructionParser {
                 eta,
                 remainingMinutes,
                 remainingDistanceMetres,
-                isRerouting(instruction));
+                isRerouting(instruction),
+                parseRoundaboutExit(currentInstruction));
     }
 
     public static Result parseAutoMapa(String title) {
@@ -85,7 +92,39 @@ public final class NavigationInstructionParser {
                 null,
                 null,
                 null,
-                isRerouting(safeTitle));
+                isRerouting(safeTitle),
+                parseRoundaboutExit(thenSplit[0]));
+    }
+
+    /**
+     * Extracts the roundabout exit number (1..8) from the current-maneuver text,
+     * e.g. "take the 2nd exit" or "zjedź 3. zjazdem". Returns null when the
+     * instruction names no exit.
+     */
+    public static Integer parseRoundaboutExit(String instruction) {
+        String value = clean(instruction);
+        if (value.isEmpty()) {
+            return null;
+        }
+        Matcher en = ROUNDABOUT_EXIT_EN.matcher(value);
+        if (en.find()) {
+            return clampExitNumber(en.group(1));
+        }
+        Matcher pl = ROUNDABOUT_EXIT_PL.matcher(fold(value));
+        if (pl.find()) {
+            String digits = pl.group(1) != null ? pl.group(1) : pl.group(2);
+            return clampExitNumber(digits);
+        }
+        return null;
+    }
+
+    private static Integer clampExitNumber(String digits) {
+        try {
+            int exit = Integer.parseInt(digits);
+            return (exit >= 1 && exit <= 8) ? exit : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**
@@ -317,10 +356,12 @@ public final class NavigationInstructionParser {
         public final Integer remainingMinutes;
         public final Integer remainingDistanceMetres;
         public final boolean rerouting;
+        public final Integer roundaboutExit;
 
         Result(String instruction, Distance distanceToTurn, Arrow maneuver, Arrow nextManeuver,
                LaneGuidance laneGuidance, Clock arrival,
-               Integer remainingMinutes, Integer remainingDistanceMetres, boolean rerouting) {
+               Integer remainingMinutes, Integer remainingDistanceMetres, boolean rerouting,
+               Integer roundaboutExit) {
             this.instruction = instruction;
             this.distanceToTurn = distanceToTurn;
             this.maneuver = maneuver;
@@ -330,6 +371,7 @@ public final class NavigationInstructionParser {
             this.remainingMinutes = remainingMinutes;
             this.remainingDistanceMetres = remainingDistanceMetres;
             this.rerouting = rerouting;
+            this.roundaboutExit = roundaboutExit;
         }
 
         public boolean hasGuidance() {
