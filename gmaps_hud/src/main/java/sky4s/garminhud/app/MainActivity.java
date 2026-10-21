@@ -40,14 +40,16 @@ import android.util.Log;
 import android.view.Display;
 import android.view.OrientationEventListener;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.CompoundButton;
 import android.widget.Button;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.res.ColorStateList;
 
 import com.google.android.material.navigation.NavigationView;
-import com.google.android.material.tabs.TabLayout;
 
 import java.io.File;
 
@@ -62,10 +64,10 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentPagerAdapter;
-import androidx.viewpager.widget.ViewPager;
+
+import uk.co.samuelwall.materialtaptargetprompt.MaterialTapTargetPrompt;
+import uk.co.samuelwall.materialtaptargetprompt.extras.backgrounds.RectanglePromptBackground;
+import uk.co.samuelwall.materialtaptargetprompt.extras.focals.RectanglePromptFocal;
 
 import chutka.bitman.com.speedometersimplified.LocationService;
 import sky4s.garminhud.ImageUtils;
@@ -87,29 +89,42 @@ public class MainActivity extends AppCompatActivity {
     private static final int MY_PERMISSIONS_REQUEST_NOTIFICATIONS = 101;
 
     //========================================
-    // UI for Page1Fragment
+    // UI: single settings screen
     //========================================
-    //status
-    SwitchCompat mHudConnectedSwitch;
+    //connection
+    TextView mHudStatusPill;
+    TextView mHudDeviceName;
 
-    //setting
+    //navigation
+    SwitchCompat mArrowTypeSwitch;
+    SwitchCompat mTrafficAndLaneSwitch;
+    SwitchCompat mLaneGuidanceSwitch;
+    SwitchCompat mRoundaboutExitNumbersSwitch;
+    SwitchCompat mRerouteIndicatorSwitch;
+    Spinner mEtaModeSpinner;
+
+    //safety
     SwitchCompat mShowSpeedSwitch;
+    SwitchCompat mOverspeedAlertSwitch;
+    SeekBar mOverspeedThresholdSeekbar;
+    TextView mOverspeedThresholdLabel;
+    SwitchCompat mSpeedCameraAlertsSwitch;
+
+    //display
     SwitchCompat mAutoBrightnessSwitch;
     SeekBar mBrightnessSeekbar;
+    SwitchCompat mIdleClockSwitch;
 
-    SwitchCompat mShowETASwitch;
-    SwitchCompat mTrafficAndLaneSwitch;
-    //========================================
-    // UI for Page3Fragment
-    //========================================
-    //arrow
-    SwitchCompat mArrowTypeSwitch;
+    //session
     SwitchCompat mAutoStartNavigationSwitch;
+
+    //advanced
     SwitchCompat mNavigationDiagnosticsSwitch;
     TextView mNavigationDiagnosticsStatus;
     Button mExportDiagnosticsButton;
     Button mClearDiagnosticsButton;
-    //app-appearance
+
+    //appearance
     SwitchCompat mDarkModeAutoSwitch;
     SwitchCompat mDarkModeManualSwitch;
 
@@ -184,13 +199,41 @@ public class MainActivity extends AppCompatActivity {
         sendBroadcast(intent);
     }
 
+    private SeekBar.OnSeekBarChangeListener mOverspeedThresholdChangeListener =
+            new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if (mOverspeedThresholdLabel != null) {
+                        mOverspeedThresholdLabel.setText(
+                                getString(R.string.layout_overspeed_threshold, progress));
+                    }
+                    if (fromUser) {
+                        storeIntOptions(R.string.overspeed_threshold_kmh, progress);
+                    }
+                }
+
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) {
+                }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
+                }
+            };
+
     void loadOptions() {
         mShowSpeedSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
 
         mTrafficAndLaneSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+        mLaneGuidanceSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+        mRoundaboutExitNumbersSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+        mRerouteIndicatorSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+
+        mOverspeedAlertSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+        mSpeedCameraAlertsSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
 
         mAutoBrightnessSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
-        mShowETASwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+        mIdleClockSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mAutoStartNavigationSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mArrowTypeSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
 
@@ -213,7 +256,24 @@ public class MainActivity extends AppCompatActivity {
         if (optionTrafficAndLaneDetect && !screenAnalysisActive) {
             storeOptions(R.string.option_traffic_and_lane_detect, false);
         }
-        final boolean optionShowEta = mSharedPrefs.getBoolean(getString(R.string.option_show_eta), false);
+        final boolean optionLaneGuidance = mSharedPrefs.getBoolean(
+                getString(R.string.option_text_lane_guidance), true);
+        final boolean optionRoundaboutExitNumbers = mSharedPrefs.getBoolean(
+                getString(R.string.roundabout_exit_numbers), true);
+        final boolean optionRerouteIndicator = mSharedPrefs.getBoolean(
+                getString(R.string.reroute_indicator), true);
+        final int optionEtaDisplayMode = NotificationMonitor.readEtaDisplayModeSetting(this);
+
+        final boolean optionOverspeedAlert = mSharedPrefs.getBoolean(
+                getString(R.string.overspeed_alert), true);
+        final int optionOverspeedThreshold = mSharedPrefs.getInt(
+                getString(R.string.overspeed_threshold_kmh), 5);
+        final boolean optionSpeedCameraAlerts = mSharedPrefs.getBoolean(
+                getString(R.string.speed_camera_alerts), true);
+
+        final boolean optionIdleClock = mSharedPrefs.getBoolean(
+                getString(R.string.option_idle_clock), true);
+
         final boolean optionAutoStartNavigation = mSharedPrefs.getBoolean(
                 getString(R.string.option_auto_start_navigation), false);
         final boolean optionDarkModeAuto = mSharedPrefs.getBoolean(getString(R.string.option_dark_mode_auto), false);
@@ -238,18 +298,87 @@ public class MainActivity extends AppCompatActivity {
             mBrightnessSeekbar.setOnSeekBarChangeListener(mBrightnessSeekbarChangeListener);
 
             mTrafficAndLaneSwitch.setChecked(screenAnalysisActive);
+            mLaneGuidanceSwitch.setChecked(optionLaneGuidance);
+            mRoundaboutExitNumbersSwitch.setChecked(optionRoundaboutExitNumbers);
+            mRerouteIndicatorSwitch.setChecked(optionRerouteIndicator);
+            mEtaModeSpinner.setSelection(optionEtaDisplayMode);
+            mEtaModeSpinner.setOnItemSelectedListener(mEtaModeSelectedListener);
 
-            mShowETASwitch.setChecked(optionShowEta);
+            mOverspeedAlertSwitch.setChecked(optionOverspeedAlert);
+            mOverspeedThresholdSeekbar.setProgress(optionOverspeedThreshold);
+            mOverspeedThresholdLabel.setText(
+                    getString(R.string.layout_overspeed_threshold, optionOverspeedThreshold));
+            mOverspeedThresholdSeekbar.setOnSeekBarChangeListener(mOverspeedThresholdChangeListener);
+            mSpeedCameraAlertsSwitch.setChecked(optionSpeedCameraAlerts);
+
+            mIdleClockSwitch.setChecked(optionIdleClock);
+
             mAutoStartNavigationSwitch.setChecked(optionAutoStartNavigation);
             mDarkModeAutoSwitch.setChecked(optionDarkModeAuto);
             mDarkModeManualSwitch.setChecked(optionDarkModeMan);
 
             mArrowTypeSwitch.setChecked(optionArrowType);
+
+            refreshConnectionUi();
         });
 
-        // Need to be after initially setChecked to avoid loop 
+        // Need to be after initially setChecked to avoid loop
         mDarkModeAutoSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mDarkModeManualSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+    }
+
+    private AdapterView.OnItemSelectedListener mEtaModeSelectedListener =
+            new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    storeIntOptions(R.string.eta_display_mode, position);
+                    sendIntExtraByBroadcast(
+                            getString(R.string.broadcast_receiver_notification_monitor),
+                            getString(R.string.eta_display_mode), position);
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {
+                }
+            };
+
+    /**
+     * Updates the bound device name from saved preferences.
+     */
+    void refreshConnectionUi() {
+        if (mHudDeviceName == null) {
+            return;
+        }
+        String deviceName = mSharedPrefs.getString(getString(R.string.bt_bind_name_key), null);
+        mHudDeviceName.setText(deviceName == null
+                ? getString(R.string.hud_device_unknown) : deviceName);
+    }
+
+    private void setHudStatusPill(int textRes, int tintColor) {
+        if (mHudStatusPill == null) {
+            return;
+        }
+        mHudStatusPill.setText(textRes);
+        mHudStatusPill.setBackgroundTintList(ColorStateList.valueOf(tintColor));
+    }
+
+    private void showOnboardingPrompt() {
+        boolean showPrompt = mSharedPrefs.getBoolean(getString(R.string.option_show_prompt), true);
+        if (!showPrompt) {
+            return;
+        }
+        View scanButton = findViewById(R.id.btnScanHUD);
+        if (scanButton == null) {
+            return;
+        }
+        new MaterialTapTargetPrompt.Builder(this)
+                .setTarget(scanButton)
+                .setPrimaryText(getString(R.string.prompt_btn_scan_bt))
+                .setPromptBackground(new RectanglePromptBackground())
+                .setPromptFocal(new RectanglePromptFocal())
+                .create()
+                .show();
+        mSharedPrefs.edit().putBoolean(getString(R.string.option_show_prompt), false).apply();
     }
 
     void setupNavigationDiagnostics() {
@@ -362,14 +491,9 @@ public class MainActivity extends AppCompatActivity {
             switch (state) {
                 case CONNECTED:
                     runOnUiThread(() -> {
-                        if (mHudConnectedSwitch != null) {
-                            mHudConnectedSwitch.setText(getString(
-                                    R.string.layout_element_hud_success_connected, "Garmin HUD"));
-                            if (mSharedPrefs.getInt(getString(R.string.state_dark_mode),
-                                    AppCompatDelegate.MODE_NIGHT_NO) == AppCompatDelegate.MODE_NIGHT_NO)
-                                mHudConnectedSwitch.setTextColor(Color.BLACK);
-                            mHudConnectedSwitch.setChecked(true);
-                        }
+                        setHudStatusPill(R.string.hud_status_connected,
+                                Color.parseColor("#2E7D32"));
+                        refreshConnectionUi();
                         if (mUseLocationService && !mLocationServiceConnected) {
                             bindLocationService();
                         }
@@ -378,20 +502,16 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case DISCONNECTED:
                     runOnUiThread(() -> {
-                        if (mHudConnectedSwitch != null) {
-                            mHudConnectedSwitch.setText(getString(R.string.layout_element_hud_disconnected));
-                            mHudConnectedSwitch.setTextColor(Color.RED);
-                            mHudConnectedSwitch.setChecked(false);
-                        }
+                        setHudStatusPill(R.string.hud_status_disconnected,
+                                Color.parseColor("#9E9E9E"));
+                        refreshConnectionUi();
                     });
                     break;
                 case FAILED:
                     runOnUiThread(() -> {
-                        if (mHudConnectedSwitch != null) {
-                            mHudConnectedSwitch.setText(getString(R.string.layout_element_hud_con_failed));
-                            mHudConnectedSwitch.setTextColor(Color.RED);
-                            mHudConnectedSwitch.setChecked(false);
-                        }
+                        setHudStatusPill(R.string.hud_status_failed,
+                                Color.parseColor("#C62828"));
+                        refreshConnectionUi();
                     });
                     break;
             }
@@ -500,19 +620,41 @@ public class MainActivity extends AppCompatActivity {
         syncIsDebug(getApplicationContext());
 
         //=======================================================================================
-        // tabs
+        // settings screen: wire every control directly (no fragments)
         //========================================================================================
-        // Connect the ViewPager to our custom PagerAdapter. The PagerAdapter supplies the pages
-        // (fragments) to the ViewPager, which the ViewPager needs to display.
-        // The ViewPager is responsible for sliding pages (fragments) in and out upon user input
-        ViewPager mViewPager = findViewById(R.id.viewpager);
-        mViewPager.setAdapter(new MyPagerAdapter(getSupportFragmentManager()));
+        mHudStatusPill = findViewById(R.id.textHudStatus);
+        mHudDeviceName = findViewById(R.id.textHudDeviceName);
 
-        // Connect the tabs with the ViewPager (the setupWithViewPager method does this for us in
-        // both directions, i.e. when a new tab is selected, the ViewPager switches to this page,
-        // and when the ViewPager switches to a new page, the corresponding tab is selected)
-        TabLayout tabLayout = findViewById(R.id.tab_layout);
-        tabLayout.setupWithViewPager(mViewPager);
+        mArrowTypeSwitch = findViewById(R.id.switchArrowType);
+        mTrafficAndLaneSwitch = findViewById(R.id.switchTrafficAndLane);
+        mLaneGuidanceSwitch = findViewById(R.id.switchLaneGuidance);
+        mRoundaboutExitNumbersSwitch = findViewById(R.id.switchRoundaboutExitNumbers);
+        mRerouteIndicatorSwitch = findViewById(R.id.switchRerouteIndicator);
+        mEtaModeSpinner = findViewById(R.id.spinnerEtaMode);
+
+        mShowSpeedSwitch = findViewById(R.id.switchShowSpeed);
+        mOverspeedAlertSwitch = findViewById(R.id.switchOverspeedAlert);
+        mOverspeedThresholdSeekbar = findViewById(R.id.seekbarOverspeedThreshold);
+        mOverspeedThresholdLabel = findViewById(R.id.textOverspeedThreshold);
+        mSpeedCameraAlertsSwitch = findViewById(R.id.switchSpeedCameraAlerts);
+
+        mAutoBrightnessSwitch = findViewById(R.id.switchAutoBrightness);
+        mBrightnessSeekbar = findViewById(R.id.seekBarBrightness);
+        mIdleClockSwitch = findViewById(R.id.switchIdleClock);
+
+        mAutoStartNavigationSwitch = findViewById(R.id.switchAutoStartNavigation);
+
+        mNavigationDiagnosticsSwitch = findViewById(R.id.switchNavigationDiagnostics);
+        mNavigationDiagnosticsStatus = findViewById(R.id.textNavigationDiagnosticsStatus);
+        mExportDiagnosticsButton = findViewById(R.id.buttonExportDiagnostics);
+        mClearDiagnosticsButton = findViewById(R.id.buttonClearDiagnostics);
+
+        mDarkModeAutoSwitch = findViewById(R.id.switchDarkModeAuto);
+        mDarkModeManualSwitch = findViewById(R.id.switchDarkModeMan);
+
+        loadOptions();
+        setupNavigationDiagnostics();
+        showOnboardingPrompt();
         //========================================================================================
         //========================================================================================
         // HUD connection
@@ -815,10 +957,34 @@ public class MainActivity extends AppCompatActivity {
                     storeOptions(R.string.option_traffic_and_lane_detect, view.isChecked());
                     break;
 
-                case R.id.switchShowETA:
+                case R.id.switchLaneGuidance:
+                    storeOptions(R.string.option_text_lane_guidance, view.isChecked());
                     sendBooleanExtraByBroadcast(getString(R.string.broadcast_receiver_notification_monitor),
-                            getString(R.string.option_show_eta), view.isChecked());
-                    storeOptions(R.string.option_show_eta, view.isChecked());
+                            getString(R.string.option_text_lane_guidance), view.isChecked());
+                    break;
+
+                case R.id.switchRoundaboutExitNumbers:
+                    storeOptions(R.string.roundabout_exit_numbers, view.isChecked());
+                    sendBooleanExtraByBroadcast(getString(R.string.broadcast_receiver_notification_monitor),
+                            getString(R.string.roundabout_exit_numbers), view.isChecked());
+                    break;
+
+                case R.id.switchRerouteIndicator:
+                    storeOptions(R.string.reroute_indicator, view.isChecked());
+                    sendBooleanExtraByBroadcast(getString(R.string.broadcast_receiver_notification_monitor),
+                            getString(R.string.reroute_indicator), view.isChecked());
+                    break;
+
+                case R.id.switchOverspeedAlert:
+                    storeOptions(R.string.overspeed_alert, view.isChecked());
+                    break;
+
+                case R.id.switchSpeedCameraAlerts:
+                    storeOptions(R.string.speed_camera_alerts, view.isChecked());
+                    break;
+
+                case R.id.switchIdleClock:
+                    storeOptions(R.string.option_idle_clock, view.isChecked());
                     break;
 
                 case R.id.switchAutoStartNavigation:
@@ -891,17 +1057,22 @@ public class MainActivity extends AppCompatActivity {
                 }
                 break;
 
-            case R.id.btnResetHUD:
-                log("Reset HUD...");
-                if (!IGNORE_BT_DEVICE) {
-                    mHud = HudSessionManager.getInstance(this).restart();
-                    HudConnectionService.start(this);
+            case R.id.btnDisconnectHUD:
+                log("Disconnect HUD...");
+                if (null != mHud) {
+                    mHud.disconnect();
                 }
                 break;
 
             default:
                 break;
         }
+    }
+
+    public void sendIntExtraByBroadcast(String receiver, String key, int value) {
+        Intent intent = new Intent(receiver).setPackage(getPackageName());
+        intent.putExtra(key, value);
+        sendBroadcast(intent);
     }
 
     private boolean showSpeed(final boolean doShowSpeed) {
@@ -1167,44 +1338,6 @@ public class MainActivity extends AppCompatActivity {
 
             }
         }
-    }
-
-    //========================================================================================
-    // tabs
-    //========================================================================================
-    // Titles of the individual pages (displayed in tabs)
-    private static final String[] PAGE_TITLES = new String[]{
-            "Main",
-            "Setup"
-    };
-
-    // The fragments that are used as the individual pages
-    private static final Fragment[] PAGES = new Fragment[]{
-            new Page1Fragment(),
-            new Page3Fragment()
-    };
-
-    // PagerAdapter for supplying the ViewPager with the pages (fragments) to display.
-    private static class MyPagerAdapter extends FragmentPagerAdapter {
-        public MyPagerAdapter(FragmentManager fragmentManager) {
-            super(fragmentManager);
-        }
-
-        @Override
-        public androidx.fragment.app.Fragment getItem(int position) {
-            return PAGES[position];
-        }
-
-        @Override
-        public int getCount() {
-            return PAGES.length;
-        }
-
-        @Override
-        public CharSequence getPageTitle(int position) {
-            return PAGE_TITLES[position];
-        }
-
     }
 
     //================================================================================
