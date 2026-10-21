@@ -24,6 +24,13 @@
     <string name="option_auto_connect" translatable="false">option_auto_connect</string>
     <string name="option_idle_clock" translatable="false">option_idle_clock</string>
 
+    <string name="roundabout_exit_numbers" translatable="false">roundabout_exit_numbers</string>
+    <string name="reroute_indicator" translatable="false">reroute_indicator</string>
+    <string name="eta_display_mode" translatable="false">eta_display_mode</string>
+    <string name="overspeed_alert" translatable="false">overspeed_alert</string>
+    <string name="overspeed_threshold_kmh" translatable="false">overspeed_threshold_kmh</string>
+    <string name="speed_camera_alerts" translatable="false">speed_camera_alerts</string>
+
     <string name="option_show_prompt" translatable="false">option_show_prompt</string>
 
     <!--broadcast receiver-->
