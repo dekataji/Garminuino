@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -151,14 +152,57 @@ public class NotificationMonitor extends NotificationListenerService {
         @Override
         public void onReceive(Context context, Intent intent) {
             Parcelable parcelablelocation = intent.getParcelableExtra(getString(R.string.location));
-            mShowETA = intent.getBooleanExtra(getString(R.string.option_show_eta), mShowETA);
-            mLastArrivalMinutes = -1; // Force to switch to ETA after several toggles
+            int newEtaMode = intent.getIntExtra(getString(R.string.eta_display_mode), mEtaDisplayMode);
+            if (newEtaMode != mEtaDisplayMode) {
+                mEtaDisplayMode = newEtaMode;
+                mLastArrivalMinutes = -1; // Force a time refresh after a mode change
+                if (mEtaDisplayMode == ETA_MODE_CYCLE) {
+                    startEtaCycler();
+                } else {
+                    stopEtaCycler();
+                }
+            }
+            mRoundaboutExitNumbersEnabled = intent.getBooleanExtra(
+                    getString(R.string.roundabout_exit_numbers), mRoundaboutExitNumbersEnabled);
+            mRerouteIndicatorEnabled = intent.getBooleanExtra(
+                    getString(R.string.reroute_indicator), mRerouteIndicatorEnabled);
+            mTextLaneGuidanceEnabled = intent.getBooleanExtra(
+                    getString(R.string.option_text_lane_guidance), mTextLaneGuidanceEnabled);
             mBusyTraffic = intent.getBooleanExtra(getString(R.string.busy_traffic), mBusyTraffic);
             mArrowTypeV2 = intent.getBooleanExtra(getString(R.string.option_arrow_type), mArrowTypeV2);
         }
     }
 
-    private boolean mShowETA = false;
+    /** ETA display modes for the HUD clock field. */
+    public static final int ETA_MODE_OFF = 0;
+    public static final int ETA_MODE_REMAINING = 1;
+    public static final int ETA_MODE_ARRIVAL = 2;
+    public static final int ETA_MODE_CYCLE = 3;
+
+    private int mEtaDisplayMode = ETA_MODE_OFF;
+    private boolean mEtaCycleShowRemaining = true;
+    private static final long ETA_CYCLE_INTERVAL_MS = 10_000L;
+
+    private boolean mRoundaboutExitNumbersEnabled = true;
+    private boolean mRerouteIndicatorEnabled = true;
+    private boolean mReroutingActive = false;
+    private Integer mRoundaboutExit = null;
+
+    /**
+     * Reads the ETA display mode, migrating the legacy boolean option_show_eta
+     * (true -> remaining time, false -> off) on first run.
+     */
+    public static int readEtaDisplayModeSetting(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(
+                MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
+        int mode = prefs.getInt(context.getString(R.string.eta_display_mode), -1);
+        if (mode < ETA_MODE_OFF || mode > ETA_MODE_CYCLE) {
+            boolean legacyShowEta = prefs.getBoolean(context.getString(R.string.option_show_eta), false);
+            mode = legacyShowEta ? ETA_MODE_REMAINING : ETA_MODE_OFF;
+            prefs.edit().putInt(context.getString(R.string.eta_display_mode), mode).apply();
+        }
+        return mode;
+    }
 
     private static NotificationMonitor sStaticInstance;
 
@@ -181,8 +225,11 @@ public class NotificationMonitor extends NotificationListenerService {
     public void onCreate() {
         super.onCreate();
         sHud = HudSessionManager.getInstance(this).getHud();
-        mShowETA = getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE)
-                .getBoolean(getString(R.string.option_show_eta), false);
+        mEtaDisplayMode = readEtaDisplayModeSetting(this);
+        mRoundaboutExitNumbersEnabled = getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE)
+                .getBoolean(getString(R.string.roundabout_exit_numbers), true);
+        mRerouteIndicatorEnabled = getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE)
+                .getBoolean(getString(R.string.reroute_indicator), true);
         mNextTurnPreviewEnabled = getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE)
                 .getBoolean(getString(R.string.option_next_turn_preview), true);
         mTextLaneGuidanceEnabled = getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE)
@@ -247,6 +294,7 @@ public class NotificationMonitor extends NotificationListenerService {
         mMonitorHandler.removeCallbacks(mRetryArrowUpdate);
         mMonitorHandler.removeCallbacks(mRetryDistanceUpdate);
         mMonitorHandler.removeCallbacks(mNextPreviewAlternator);
+        mMonitorHandler.removeCallbacks(mEtaCycler);
         if (mMsgReceiver != null) {
             unregisterReceiver(mMsgReceiver);
         }
@@ -462,9 +510,14 @@ public class NotificationMonitor extends NotificationListenerService {
         mIsNavigating = notification != null
                 && (notification.flags & Notification.FLAG_ONGOING_EVENT) != 0
                 && hasGuidance;
-        if (mIsNavigating && !result.rerouting) {
-            applyParsedNavigationResult(result, false);
-            updateHudInformation();
+        if (mIsNavigating) {
+            if (result.rerouting) {
+                handleRerouting();
+            } else {
+                mReroutingActive = false;
+                applyParsedNavigationResult(result, false);
+                updateHudInformation();
+            }
         }
 
         mPostman.addBooleanExtra(getString(R.string.notify_parse_failed), !mIsNavigating);
@@ -943,6 +996,8 @@ public class NotificationMonitor extends NotificationListenerService {
         HudNavigationState.clearAutoMapaSpeedLimit();
         mSuppressAutoStartUntilNavigationEnds = false;
         stopNextTurnPreview();
+        stopEtaCycler();
+        mReroutingActive = false;
         mNextManeuver = Arrow.None;
         mNextManeuverV2 = ArrowV2.None;
         if (sHud != null && mLastTextLaneOutline != -1) {
@@ -1146,7 +1201,10 @@ public class NotificationMonitor extends NotificationListenerService {
             return false;
         }
 
-        if (!result.rerouting) {
+        if (result.rerouting) {
+            handleRerouting();
+        } else {
+            mReroutingActive = false;
             applyParsedNavigationResult(result, true);
             updateHudInformation();
         }
@@ -1185,6 +1243,7 @@ public class NotificationMonitor extends NotificationListenerService {
 
         setParsedManeuver(result.maneuver);
         setParsedNextManeuver(result.nextManeuver);
+        mRoundaboutExit = result.roundaboutExit;
         applyTextLaneGuidance(result.laneGuidance, result.maneuver);
 
         if (!includesTripSummary) {
@@ -1209,6 +1268,28 @@ public class NotificationMonitor extends NotificationListenerService {
             mRemainingDistance = Integer.toString(result.remainingDistanceMetres);
             mRemainingDistanceUnits = "m";
         }
+    }
+
+    /**
+     * Shows a neutral HUD state while the navigation app recalculates the route.
+     * The last distance stays on screen; only the direction arrow is blanked.
+     *
+     * <p>Assumption: {@code setDirection(AsDirection, ArrowOnly, AsDirection)} renders as an
+     * empty arrow slot — angle 0x00 carries no direction and ArrowOnly suppresses the
+     * roundabout/flag overlays.</p>
+     */
+    private void handleRerouting() {
+        if (!mRerouteIndicatorEnabled) {
+            return;
+        }
+        if (mReroutingActive) {
+            return;
+        }
+        mReroutingActive = true;
+        if (sHud != null) {
+            sHud.setDirection(eOutAngle.AsDirection, eOutType.ArrowOnly, eOutAngle.AsDirection);
+        }
+        Log.i(TAG, "Rerouting: showing neutral HUD state");
     }
 
     private void setParsedManeuver(Arrow maneuver) {
@@ -1485,6 +1566,32 @@ public class NotificationMonitor extends NotificationListenerService {
         return minSadArrow;
     }
 
+    /**
+     * Maps a parsed roundabout exit number (1..8) to the HUD spoke angle sent as
+     * nRoundaboutOut. Exit 1 is the first exit in the driving direction; spoke
+     * handedness follows the roundabout type (RightRoundabout = counterclockwise,
+     * the left-hand-traffic variants).
+     */
+    private eOutAngle roundaboutExitSpoke(eOutAngle defaultAngle, eOutType roundaboutType) {
+        if (!mRoundaboutExitNumbersEnabled || mRoundaboutExit == null) {
+            return defaultAngle;
+        }
+        boolean counterClockwise = roundaboutType == eOutType.RightRoundabout;
+        int exit = mRoundaboutExit;
+        if (counterClockwise) {
+            // Left-hand traffic: exits count to the left.
+            if (exit == 1) return eOutAngle.Left;
+            if (exit == 2) return eOutAngle.Straight;
+            if (exit == 3) return eOutAngle.Right;
+            return eOutAngle.SharpRight;
+        }
+        // Right-hand traffic: exits count to the right.
+        if (exit == 1) return eOutAngle.Right;
+        if (exit == 2) return eOutAngle.Straight;
+        if (exit == 3) return eOutAngle.Left;
+        return eOutAngle.SharpLeft;
+    }
+
     private Arrow mPreArrowV1 = Arrow.None;
 
     void updateArrow(Arrow arrow) {
@@ -1526,83 +1633,83 @@ public class NotificationMonitor extends NotificationListenerService {
                 //1 checked
             case LeaveRoundaboutLeft:
                 //9 checked
-                sHud.setDirection(eOutAngle.Left, eOutType.LeftRoundabout, eOutAngle.Left);
+                sHud.setDirection(eOutAngle.Left, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.Left, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutAsUTurn:
-                sHud.setDirection(eOutAngle.Down, eOutType.LeftRoundabout, eOutAngle.Down);
+                sHud.setDirection(eOutAngle.Down, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.Down, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutAsUTurnCC:
-                sHud.setDirection(eOutAngle.Down, eOutType.RightRoundabout, eOutAngle.Down);
+                sHud.setDirection(eOutAngle.Down, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.Down, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutEasyLeft:
                 //4 checked
-                sHud.setDirection(eOutAngle.EasyLeft, eOutType.LeftRoundabout, eOutAngle.EasyLeft);
+                sHud.setDirection(eOutAngle.EasyLeft, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.EasyLeft, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutEasyLeftCC:
                 //5 checked
-                sHud.setDirection(eOutAngle.EasyLeft, eOutType.RightRoundabout, eOutAngle.EasyLeft);
+                sHud.setDirection(eOutAngle.EasyLeft, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.EasyLeft, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutEasyRight:
                 //6 checked
-                sHud.setDirection(eOutAngle.EasyRight, eOutType.LeftRoundabout, eOutAngle.EasyRight);
+                sHud.setDirection(eOutAngle.EasyRight, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.EasyRight, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutEasyRightCC:
                 //7 checked
-                sHud.setDirection(eOutAngle.EasyRight, eOutType.RightRoundabout, eOutAngle.EasyRight);
+                sHud.setDirection(eOutAngle.EasyRight, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.EasyRight, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutCC:
                 //8 checked
-                sHud.setDirection(eOutAngle.Right, eOutType.RightRoundabout, eOutAngle.Right);
+                sHud.setDirection(eOutAngle.Right, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.Right, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutLeftCC:
                 //10 checked
-                sHud.setDirection(eOutAngle.Left, eOutType.RightRoundabout, eOutAngle.Left);
+                sHud.setDirection(eOutAngle.Left, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.Left, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutRight:
                 //11 checked
-                sHud.setDirection(eOutAngle.Right, eOutType.LeftRoundabout, eOutAngle.Right);
+                sHud.setDirection(eOutAngle.Right, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.Right, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutRightCC:
                 //12 checked
-                sHud.setDirection(eOutAngle.Right, eOutType.RightRoundabout, eOutAngle.Right);
+                sHud.setDirection(eOutAngle.Right, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.Right, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutSharpLeft:
                 //13 checked
-                sHud.setDirection(eOutAngle.SharpLeft, eOutType.LeftRoundabout, eOutAngle.SharpLeft);
+                sHud.setDirection(eOutAngle.SharpLeft, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.SharpLeft, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutSharpLeftCC:
                 //14 checked
-                sHud.setDirection(eOutAngle.SharpLeft, eOutType.RightRoundabout, eOutAngle.SharpLeft);
+                sHud.setDirection(eOutAngle.SharpLeft, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.SharpLeft, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutSharpRight:
                 //15 checked
-                sHud.setDirection(eOutAngle.SharpRight, eOutType.LeftRoundabout, eOutAngle.SharpRight);
+                sHud.setDirection(eOutAngle.SharpRight, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.SharpRight, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutSharpRightCC:
                 //16
-                sHud.setDirection(eOutAngle.SharpRight, eOutType.RightRoundabout, eOutAngle.SharpRight);
+                sHud.setDirection(eOutAngle.SharpRight, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.SharpRight, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutStraight:
-                sHud.setDirection(eOutAngle.Straight, eOutType.LeftRoundabout, eOutAngle.Straight);
+                sHud.setDirection(eOutAngle.Straight, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.Straight, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutStraightCC:
-                sHud.setDirection(eOutAngle.Straight, eOutType.RightRoundabout, eOutAngle.Straight);
+                sHud.setDirection(eOutAngle.Straight, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.Straight, eOutType.RightRoundabout));
                 break;
 
             case Left:
@@ -1682,83 +1789,83 @@ public class NotificationMonitor extends NotificationListenerService {
             case LeaveRoundaboutLeft:
                 //9 checked
                 //1 checked
-                sHud.setDirection(eOutAngle.Left, eOutType.LeftRoundabout, eOutAngle.Left);
+                sHud.setDirection(eOutAngle.Left, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.Left, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutAsUTurn:
-                sHud.setDirection(eOutAngle.Down, eOutType.LeftRoundabout, eOutAngle.Down);
+                sHud.setDirection(eOutAngle.Down, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.Down, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutAsUTurnCC:
-                sHud.setDirection(eOutAngle.Down, eOutType.RightRoundabout, eOutAngle.Down);
+                sHud.setDirection(eOutAngle.Down, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.Down, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutEasyLeft:
                 //4 checked
-                sHud.setDirection(eOutAngle.EasyLeft, eOutType.LeftRoundabout, eOutAngle.EasyLeft);
+                sHud.setDirection(eOutAngle.EasyLeft, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.EasyLeft, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutEasyLeftCC:
                 //5 checked
-                sHud.setDirection(eOutAngle.EasyLeft, eOutType.RightRoundabout, eOutAngle.EasyLeft);
+                sHud.setDirection(eOutAngle.EasyLeft, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.EasyLeft, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutEasyRight:
                 //6 checked
-                sHud.setDirection(eOutAngle.EasyRight, eOutType.LeftRoundabout, eOutAngle.EasyRight);
+                sHud.setDirection(eOutAngle.EasyRight, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.EasyRight, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutEasyRightCC:
                 //7 checked
-                sHud.setDirection(eOutAngle.EasyRight, eOutType.RightRoundabout, eOutAngle.EasyRight);
+                sHud.setDirection(eOutAngle.EasyRight, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.EasyRight, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutCC:
                 //8 checked
-                sHud.setDirection(eOutAngle.Right, eOutType.RightRoundabout, eOutAngle.Right);
+                sHud.setDirection(eOutAngle.Right, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.Right, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutLeftCC:
                 //10 checked
-                sHud.setDirection(eOutAngle.Left, eOutType.RightRoundabout, eOutAngle.Left);
+                sHud.setDirection(eOutAngle.Left, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.Left, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutRight:
                 //11 checked
-                sHud.setDirection(eOutAngle.Right, eOutType.LeftRoundabout, eOutAngle.Right);
+                sHud.setDirection(eOutAngle.Right, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.Right, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutRightCC:
                 //12 checked
-                sHud.setDirection(eOutAngle.Right, eOutType.RightRoundabout, eOutAngle.Right);
+                sHud.setDirection(eOutAngle.Right, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.Right, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutSharpLeft:
                 //13 checked
-                sHud.setDirection(eOutAngle.SharpLeft, eOutType.LeftRoundabout, eOutAngle.SharpLeft);
+                sHud.setDirection(eOutAngle.SharpLeft, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.SharpLeft, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutSharpLeftCC:
                 //14 checked
-                sHud.setDirection(eOutAngle.SharpLeft, eOutType.RightRoundabout, eOutAngle.SharpLeft);
+                sHud.setDirection(eOutAngle.SharpLeft, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.SharpLeft, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutSharpRight:
                 //15 checked
-                sHud.setDirection(eOutAngle.SharpRight, eOutType.LeftRoundabout, eOutAngle.SharpRight);
+                sHud.setDirection(eOutAngle.SharpRight, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.SharpRight, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutSharpRightCC:
                 //16
-                sHud.setDirection(eOutAngle.SharpRight, eOutType.RightRoundabout, eOutAngle.SharpRight);
+                sHud.setDirection(eOutAngle.SharpRight, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.SharpRight, eOutType.RightRoundabout));
                 break;
 
             case LeaveRoundaboutStraight:
-                sHud.setDirection(eOutAngle.Straight, eOutType.LeftRoundabout, eOutAngle.Straight);
+                sHud.setDirection(eOutAngle.Straight, eOutType.LeftRoundabout, roundaboutExitSpoke(eOutAngle.Straight, eOutType.LeftRoundabout));
                 break;
 
             case LeaveRoundaboutStraightCC:
-                sHud.setDirection(eOutAngle.Straight, eOutType.RightRoundabout, eOutAngle.Straight);
+                sHud.setDirection(eOutAngle.Straight, eOutType.RightRoundabout, roundaboutExitSpoke(eOutAngle.Straight, eOutType.RightRoundabout));
                 break;
 
             case Left:
@@ -1855,6 +1962,71 @@ public class NotificationMonitor extends NotificationListenerService {
             mShowingNextPreview = false;
             sendCurrentArrow();
         }
+    }
+
+    /**
+     * Alternates the HUD clock field between remaining time and arrival time
+     * while ETA display mode is CYCLE.
+     */
+    private final Runnable mEtaCycler = new Runnable() {
+        @Override
+        public void run() {
+            if (mEtaDisplayMode != ETA_MODE_CYCLE || sHud == null || !mIsNavigating) {
+                return;
+            }
+            mEtaCycleShowRemaining = !mEtaCycleShowRemaining;
+            pushTimeDisplay(mEtaCycleShowRemaining ? ETA_MODE_REMAINING : ETA_MODE_ARRIVAL);
+            mMonitorHandler.postDelayed(this, ETA_CYCLE_INTERVAL_MS);
+        }
+    };
+
+    private void startEtaCycler() {
+        stopEtaCycler();
+        if (mEtaDisplayMode != ETA_MODE_CYCLE) {
+            return;
+        }
+        mEtaCycleShowRemaining = true;
+        mMonitorHandler.postDelayed(mEtaCycler, ETA_CYCLE_INTERVAL_MS);
+    }
+
+    private void stopEtaCycler() {
+        mMonitorHandler.removeCallbacks(mEtaCycler);
+    }
+
+    /**
+     * Pushes the requested time display to the HUD. Returns the send result.
+     */
+    private boolean pushTimeDisplay(int mode) {
+        if (mode == ETA_MODE_ARRIVAL) {
+            return pushArrivalTime();
+        }
+        return pushRemainingTime();
+    }
+
+    private boolean pushRemainingTime() {
+        if (sHud == null || mRemainingMinutes == null) {
+            return false;
+        }
+        int hh = null != mRemainingHours ? Integer.parseInt(mRemainingHours) : 0;
+        int mm = Integer.parseInt(mRemainingMinutes);
+        sHud.setRemainTime(hh, mm, mBusyTraffic);
+        return sHud.getSendResult();
+    }
+
+    private boolean pushArrivalTime() {
+        if (sHud == null || mArrivalHours == -1 || mArrivalMinutes == -1) {
+            return false;
+        }
+        boolean sameAsLast = mArrivalHours == mLastArrivalHours
+                && mArrivalMinutes == mLastArrivalMinutes;
+        if (sameAsLast) {
+            return false;
+        }
+        // Arrival clock: setTime renders a clock time (packet 0x05 clock variant).
+        sHud.setTime(mArrivalHours, mArrivalMinutes, false, mBusyTraffic, true, false);
+        mLastArrivalMinutes = mArrivalMinutes;
+        mLastArrivalHours = mArrivalHours;
+        return sHud.getSendResult();
     }
 
     private void sendCurrentArrow() {
@@ -1980,29 +2152,21 @@ public class NotificationMonitor extends NotificationListenerService {
         boolean timeSendResult = false;
 
         if (null != mRemainingMinutes) {
-            if (mShowETA) {
-                //show ETA
-                if (mArrivalHours != -1 && mArrivalMinutes != -1) {
-                    boolean sameAsLast = mArrivalHours == mLastArrivalHours && mArrivalMinutes == mLastArrivalMinutes;
-
-                    if (!sameAsLast) {
-                        if (null != sHud) {
-                            sHud.setRemainTime(mArrivalHours, mArrivalMinutes, mBusyTraffic);
-                        }
-                        timeSendResult = (null != sHud) && sHud.getSendResult();
-                        mLastArrivalMinutes = mArrivalMinutes;
-                        mLastArrivalHours = mArrivalHours;
-                    }
-                }
-            } else {
-                //show remain time
-                int hh = null != mRemainingHours ? Integer.parseInt(mRemainingHours) : 0;
-                int mm = Integer.parseInt(mRemainingMinutes);
-
-                if (null != sHud) {
-                    sHud.setRemainTime(hh, mm, mBusyTraffic);
-                }
-                timeSendResult = (null != sHud) && sHud.getSendResult();
+            switch (mEtaDisplayMode) {
+                case ETA_MODE_REMAINING:
+                    timeSendResult = pushRemainingTime();
+                    break;
+                case ETA_MODE_ARRIVAL:
+                    timeSendResult = pushArrivalTime();
+                    break;
+                case ETA_MODE_CYCLE:
+                    timeSendResult = pushTimeDisplay(
+                            mEtaCycleShowRemaining ? ETA_MODE_REMAINING : ETA_MODE_ARRIVAL);
+                    startEtaCycler();
+                    break;
+                case ETA_MODE_OFF:
+                default:
+                    break;
             }
         }
         //===================================================================================
