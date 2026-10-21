@@ -30,7 +30,9 @@ This project is a modernized fork of the original [Garminuino](https://github.co
 - Distance to the next manoeuvre.
 - Turn direction and roundabout guidance.
 - Remaining route distance and travel time when provided by the navigation app.
-- Estimated arrival time (ETA).
+- Estimated arrival time (ETA), remaining time, or both alternating.
+- Roundabout exit numbers parsed from the instruction text ("take the 2nd exit").
+- Rerouting indicator: a neutral HUD state while the navigation app recalculates.
 - Lane guidance with up to six lanes.
 - Text-based lane guidance parsed from Google Maps notifications ("Use the left 2 lanes"), shown even with the screen off.
 - Next-turn preview: compound instructions ("Turn left, then turn right") alternate the HUD arrow between the current and next manoeuvre.
@@ -39,6 +41,7 @@ This project is a modernized fork of the original [Garminuino](https://github.co
 - Automatic reconnection after the HUD is disconnected and becomes available again.
 - Automatic service start on phone boot (reconnects to the remembered HUD without opening the app).
 - AutoMapa speed-limit recognition from the screen.
+- OpenStreetMap speed limits: when GPS is on, the app looks up the local speed limit and the nearest speed cameras from OpenStreetMap data and shows an overspeed warning and a camera icon on the HUD.
 - Optional automatic startup when supported navigation begins.
 - Automatic shutdown after navigation ends when the application was auto-started.
 - Automatic or manual HUD brightness control.
@@ -56,7 +59,8 @@ This project is a modernized fork of the original [Garminuino](https://github.co
 | Remaining travel time | Yes | Yes |
 | ETA | Yes | Yes |
 | Lane guidance | Yes | Yes, up to 6 lanes |
-| Speed limit | No dedicated parser | Yes, through screen analysis |
+| Speed limit | OpenStreetMap lookup | Yes, through screen analysis; OpenStreetMap lookup as fallback |
+| Speed camera alert | OpenStreetMap lookup | OpenStreetMap lookup |
 | Traffic/congestion indication | Screen analysis when available | Not currently used |
 
 The Garmin HUD protocol has a limited set of symbols. Some navigation instructions therefore have to be mapped to the closest symbol supported by the hardware.
@@ -166,20 +170,43 @@ Because screen recognition observes the visible navigation interface, overlays, 
 
 ## Application settings
 
-### Main
+The main screen groups every setting into cards:
 
-- Scan for a Garmin HUD or reset the current HUD connection.
-- View the current HUD connection status.
-- Enable GPS speed display.
-- Select automatic brightness or set the manual brightness level.
-- Enable arrival-time display.
-- Enable screen analysis and grant full-screen capture permission.
+### Connection
 
-### Setup
+- Scan for a Garmin HUD, or disconnect the current one.
+- Connection status pill and the name of the paired device.
+
+### Navigation
 
 - Select the Garmin HUD arrow style.
+- Enable screen analysis and grant full-screen capture permission.
+- Enable text lane guidance parsed from navigation notifications.
+- Enable roundabout exit numbers ("take the 2nd exit" drives the HUD's exit spoke).
+- Enable the rerouting indicator shown while the route recalculates.
+- Time display mode: off, remaining time, arrival time, or cycling between the two every 10 seconds.
+
+### Safety
+
+- Enable GPS speed display.
+- Enable the overspeed alert and set the tolerance above the speed limit (km/h).
+- Enable speed camera alerts.
+
+### Display
+
+- Select automatic brightness or set the manual brightness level.
+- Enable the idle clock shown when the HUD is connected but not navigating.
+
+### Session
+
 - Enable automatic startup with Google Maps or AutoMapa navigation.
+
+### Advanced
+
 - Record, export or clear navigation diagnostics.
+
+### Appearance
+
 - Follow the system dark theme or select dark mode manually.
 
 The interface deliberately omits obsolete or non-functional options from the original application, including the old debug tab, notification-status indicators, manual traffic controls, notification-display controls and BMW-specific settings.
