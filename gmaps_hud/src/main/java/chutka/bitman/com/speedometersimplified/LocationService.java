@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.location.Location;
@@ -36,7 +37,9 @@ import sky4s.garminhud.app.HudNavigationState;
 import sky4s.garminhud.app.MainActivity;
 import sky4s.garminhud.app.NotificationMonitor;
 import sky4s.garminhud.app.R;
+import sky4s.garminhud.app.navigation.OsmRoadDataProvider;
 import sky4s.garminhud.eUnits;
+import sky4s.garminhud.hud.HUDInterface;
 
 public class LocationService extends Service {
     private static final String TAG = LocationService.class.getSimpleName();
@@ -66,16 +69,46 @@ public class LocationService extends Service {
 
             int roundedSpeed = (int) Math.round(speed);
             Log.v(TAG, "GPS speed=" + roundedSpeed);
-            int speedLimit = NotificationMonitor.AUTOMAPA_PACKAGE_NAME.equals(
+
+            // Refresh OSM road data in the background; results land in
+            // HudNavigationState on the provider thread. Failures keep the last
+            // known values, so this never crashes the service.
+            OsmRoadDataProvider.getInstance().query(
+                    location.getLatitude(), location.getLongitude(), data -> {
+                        if (data == null) {
+                            return;
+                        }
+                        if (data.speedLimitKmh != null) {
+                            HudNavigationState.setOsmSpeedLimit(data.speedLimitKmh);
+                        }
+                        HudNavigationState.setSpeedCameraAhead(data.speedCameraAhead);
+                    });
+
+            HUDInterface hud = HudSessionManager.getInstance(LocationService.this).getHud();
+            // Limit priority: fresh OSM lookup first, then AutoMapa screen OCR.
+            int osmLimit = HudNavigationState.getFreshOsmSpeedLimit();
+            int automapaLimit = NotificationMonitor.AUTOMAPA_PACKAGE_NAME.equals(
                     NotificationMonitor.getActiveNavigationPackage())
                     ? HudNavigationState.getFreshAutoMapaSpeedLimit() : -1;
+            int speedLimit = osmLimit > 0 ? osmLimit : automapaLimit;
+
+            SharedPreferences prefs = getSharedPreferences(
+                    MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
+            boolean overspeedAlert = prefs.getBoolean(
+                    getString(R.string.overspeed_alert), true);
+            int overspeedThresholdKmh = prefs.getInt(
+                    getString(R.string.overspeed_threshold_kmh), 5);
+            boolean cameraAlerts = prefs.getBoolean(
+                    getString(R.string.speed_camera_alerts), true);
+
             if (speedLimit > 0) {
-                HudSessionManager.getInstance(LocationService.this).getHud().setSpeedWarning(
-                        roundedSpeed, speedLimit, roundedSpeed > speedLimit, true, true);
+                boolean speeding = overspeedAlert
+                        && roundedSpeed > speedLimit + overspeedThresholdKmh;
+                hud.setSpeedWarning(roundedSpeed, speedLimit, speeding, true, false);
             } else {
-                HudSessionManager.getInstance(LocationService.this)
-                        .getHud().setSpeed(roundedSpeed, true);
+                hud.setSpeed(roundedSpeed, true);
             }
+            hud.setCameraIcon(cameraAlerts && HudNavigationState.isFreshSpeedCameraAhead());
             sendSpeedToVisibleActivity(speed);
         }
     };
@@ -134,6 +167,14 @@ public class LocationService extends Service {
             mLocationClient.removeLocationUpdates(mLocationCallback);
             mReceivingUpdates = false;
         }
+        // The camera icon is only driven while this service runs; clear it so a
+        // stale alert cannot linger on the HUD.
+        try {
+            HudSessionManager.getInstance(this).getHud().setCameraIcon(false);
+        } catch (Exception ignored) {
+        }
+        HudNavigationState.clearOsmSpeedLimit();
+        HudNavigationState.clearSpeedCamera();
         sStartRequested.set(false);
         super.onDestroy();
     }
