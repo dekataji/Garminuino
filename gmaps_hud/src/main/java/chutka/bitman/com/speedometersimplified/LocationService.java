@@ -54,6 +54,20 @@ public class LocationService extends Service {
     private FusedLocationProviderClient mLocationClient;
     private boolean mReceivingUpdates;
 
+    // Cached safety preferences (read once per service start; the service is
+    // restarted when settings change via the existing broadcast flow).
+    private boolean mOverspeedAlert = true;
+    private int mOverspeedThresholdKmh = 5;
+    private boolean mSpeedCameraAlerts = true;
+
+    private void reloadSafetyPrefs() {
+        SharedPreferences prefs = getSharedPreferences(
+                MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
+        mOverspeedAlert = prefs.getBoolean(getString(R.string.overspeed_alert), true);
+        mOverspeedThresholdKmh = prefs.getInt(getString(R.string.overspeed_threshold_kmh), 5);
+        mSpeedCameraAlerts = prefs.getBoolean(getString(R.string.speed_camera_alerts), true);
+    }
+
     private final LocationCallback mLocationCallback = new LocationCallback() {
         @Override
         public void onLocationResult(@NonNull LocationResult result) {
@@ -92,23 +106,18 @@ public class LocationService extends Service {
                     ? HudNavigationState.getFreshAutoMapaSpeedLimit() : -1;
             int speedLimit = osmLimit > 0 ? osmLimit : automapaLimit;
 
-            SharedPreferences prefs = getSharedPreferences(
-                    MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
-            boolean overspeedAlert = prefs.getBoolean(
-                    getString(R.string.overspeed_alert), true);
-            int overspeedThresholdKmh = prefs.getInt(
-                    getString(R.string.overspeed_threshold_kmh), 5);
-            boolean cameraAlerts = prefs.getBoolean(
-                    getString(R.string.speed_camera_alerts), true);
-
             if (speedLimit > 0) {
-                boolean speeding = overspeedAlert
-                        && roundedSpeed > speedLimit + overspeedThresholdKmh;
+                boolean speeding = mOverspeedAlert
+                        && roundedSpeed > speedLimit + mOverspeedThresholdKmh;
+                // setSpeedWarning(speed, limit, speeding, showIcon, showSlash):
+                // slash overlay disabled - the threshold-gated warning is less
+                // aggressive than the old immediate trigger, so the slash would
+                // over-signal. Icon still shows.
                 hud.setSpeedWarning(roundedSpeed, speedLimit, speeding, true, false);
             } else {
                 hud.setSpeed(roundedSpeed, true);
             }
-            hud.setCameraIcon(cameraAlerts && HudNavigationState.isFreshSpeedCameraAhead());
+            hud.setCameraIcon(mSpeedCameraAlerts && HudNavigationState.isFreshSpeedCameraAhead());
             sendSpeedToVisibleActivity(speed);
         }
     };
@@ -131,6 +140,7 @@ public class LocationService extends Service {
     public void onCreate() {
         super.onCreate();
         mLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        reloadSafetyPrefs();
         createNotificationChannel();
     }
 
