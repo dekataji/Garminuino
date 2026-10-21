@@ -1981,8 +1981,13 @@ public class NotificationMonitor extends NotificationListenerService {
     };
 
     private void startEtaCycler() {
-        stopEtaCycler();
         if (mEtaDisplayMode != ETA_MODE_CYCLE) {
+            return;
+        }
+        // Don't reset an already-running cycler: updateHudInformation() calls this
+        // on every HUD tick, and resetting mEtaCycleShowRemaining would pin the
+        // display on REMAINING forever.
+        if (mMonitorHandler.hasCallbacks(mEtaCycler)) {
             return;
         }
         mEtaCycleShowRemaining = true;
