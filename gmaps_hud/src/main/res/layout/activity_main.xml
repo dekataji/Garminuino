@@ -14,7 +14,6 @@
         android:orientation="vertical"
         tools:context=".MainActivity">
 
-
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
@@ -23,30 +22,381 @@
             android:minHeight="?attr/actionBarSize"
             android:theme="?attr/actionBarTheme" />
 
-
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tab_layout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/layout_tab_main" />
-
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/layout_tab_setup" />
-
-        </com.google.android.material.tabs.TabLayout>
-
-        <androidx.viewpager.widget.ViewPager
-            android:id="@+id/viewpager"
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/scrollSettings"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="10dp" />
+            android:fillViewport="true">
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Connection -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardElevation="2dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SettingsSectionTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_section_connection" />
+
+                        <TextView
+                            android:id="@+id/textHudStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:background="@drawable/status_pill"
+                            android:text="@string/hud_status_disconnected"
+                            android:textColor="@android:color/white"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <TextView
+                            android:id="@+id/textHudDeviceName"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/hud_device_unknown"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/btnScanHUD"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="8dp"
+                                android:layout_weight="1"
+                                android:onClick="buttonOnClicked"
+                                android:text="@string/layout_button_scan_hud"
+                                android:textSize="@dimen/option_text_size" />
+
+                            <Button
+                                android:id="@+id/btnDisconnectHUD"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:onClick="buttonOnClicked"
+                                android:text="@string/layout_button_disconnect_hud"
+                                android:textSize="@dimen/option_text_size" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Navigation -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardElevation="2dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SettingsSectionTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_section_navigation" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchArrowType"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="false"
+                            android:text="@string/layout_element_arrow_type_v1"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchTrafficAndLane"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="false"
+                            android:text="@string/layout_element_traffic_lane_det"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchLaneGuidance"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/layout_element_lane_guidance"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchRoundaboutExitNumbers"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/layout_element_roundabout_exit_numbers"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchRerouteIndicator"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/layout_element_reroute_indicator"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/layout_element_eta_display_mode"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <Spinner
+                            android:id="@+id/spinnerEtaMode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:entries="@array/eta_display_modes" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Safety -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardElevation="2dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SettingsSectionTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_section_safety" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchShowSpeed"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/layout_element_show_speed"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchOverspeedAlert"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/layout_element_overspeed_alert"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <TextView
+                            android:id="@+id/textOverspeedThreshold"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <SeekBar
+                            android:id="@+id/seekbarOverspeedThreshold"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:max="20"
+                            android:progress="5" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchSpeedCameraAlerts"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/layout_element_speed_camera_alerts"
+                            android:textSize="@dimen/option_text_size" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Display -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardElevation="2dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SettingsSectionTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_section_display" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchAutoBrightness"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/layout_element_auto_brightness"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <SeekBar
+                            android:id="@+id/seekBarBrightness"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:max="10"
+                            android:progress="10" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchIdleClock"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/layout_element_idle_clock"
+                            android:textSize="@dimen/option_text_size" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Session -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardElevation="2dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SettingsSectionTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_section_session" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchAutoStartNavigation"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="false"
+                            android:text="@string/layout_element_auto_start_navigation"
+                            android:textSize="@dimen/option_text_size" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Advanced -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardElevation="2dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SettingsSectionTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_section_advanced" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchNavigationDiagnostics"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="false"
+                            android:text="@string/layout_element_navigation_diagnostics"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <TextView
+                            android:id="@+id/textNavigationDiagnosticsStatus"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/layout_navigation_diagnostics_inactive"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingBottom="@dimen/option_padding_bottom"
+                            android:text="@string/layout_navigation_diagnostics_description"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <Button
+                            android:id="@+id/buttonExportDiagnostics"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/layout_button_export_diagnostics" />
+
+                        <Button
+                            android:id="@+id/buttonClearDiagnostics"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/layout_button_clear_diagnostics" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Appearance -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardElevation="2dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SettingsSectionTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_section_appearance" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchDarkModeAuto"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="false"
+                            android:text="@string/layout_element_darkmode_auto"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchDarkModeMan"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="false"
+                            android:text="@string/layout_element_darkmode_man"
+                            android:textSize="@dimen/option_text_size" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
     </LinearLayout>
 
     <com.google.android.material.navigation.NavigationView
