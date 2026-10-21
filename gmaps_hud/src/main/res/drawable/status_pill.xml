@@ -2,7 +2,9 @@
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <corners android:radius="12dp" />
-    <solid android:color="@android:color/white" />
+    <!-- Base color replaced at runtime via setBackgroundTintList().
+         Dark default so untinted state doesn't flash white on OLED. -->
+    <solid android:color="@color/oled_surface_variant" />
     <padding
         android:left="12dp"
         android:right="12dp"
