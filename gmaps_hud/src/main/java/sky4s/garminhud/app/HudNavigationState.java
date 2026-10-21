@@ -9,9 +9,17 @@ package sky4s.garminhud.app;
  */
 public final class HudNavigationState {
     private static final long SPEED_LIMIT_MAX_AGE_MS = 5_000L;
+    private static final long OSM_SPEED_LIMIT_MAX_AGE_MS = 60_000L;
+    private static final long SPEED_CAMERA_MAX_AGE_MS = 60_000L;
 
     private static volatile int autoMapaSpeedLimit = -1;
     private static volatile long autoMapaSpeedLimitUpdatedAt;
+
+    private static volatile int osmSpeedLimit = -1;
+    private static volatile long osmSpeedLimitUpdatedAt;
+
+    private static volatile boolean speedCameraAhead = false;
+    private static volatile long speedCameraUpdatedAt;
 
     private HudNavigationState() {
     }
@@ -37,5 +45,49 @@ public final class HudNavigationState {
     public static void clearAutoMapaSpeedLimit() {
         autoMapaSpeedLimit = -1;
         autoMapaSpeedLimitUpdatedAt = 0L;
+    }
+
+    public static void setOsmSpeedLimit(int speedLimitKmh) {
+        if (speedLimitKmh <= 0) {
+            clearOsmSpeedLimit();
+            return;
+        }
+        osmSpeedLimit = speedLimitKmh;
+        osmSpeedLimitUpdatedAt = System.currentTimeMillis();
+    }
+
+    public static int getFreshOsmSpeedLimit() {
+        return getFreshOsmSpeedLimit(System.currentTimeMillis());
+    }
+
+    static int getFreshOsmSpeedLimit(long now) {
+        int limit = osmSpeedLimit;
+        if (limit <= 0 || now - osmSpeedLimitUpdatedAt > OSM_SPEED_LIMIT_MAX_AGE_MS) {
+            return -1;
+        }
+        return limit;
+    }
+
+    public static void clearOsmSpeedLimit() {
+        osmSpeedLimit = -1;
+        osmSpeedLimitUpdatedAt = 0L;
+    }
+
+    public static void setSpeedCameraAhead(boolean ahead) {
+        speedCameraAhead = ahead;
+        speedCameraUpdatedAt = System.currentTimeMillis();
+    }
+
+    public static boolean isFreshSpeedCameraAhead() {
+        return isFreshSpeedCameraAhead(System.currentTimeMillis());
+    }
+
+    static boolean isFreshSpeedCameraAhead(long now) {
+        return speedCameraAhead && now - speedCameraUpdatedAt <= SPEED_CAMERA_MAX_AGE_MS;
+    }
+
+    public static void clearSpeedCamera() {
+        speedCameraAhead = false;
+        speedCameraUpdatedAt = 0L;
     }
 }
