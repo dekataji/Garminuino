@@ -1,16 +1,39 @@
 <resources>
 
-    <style name="AppTheme.Base" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <!-- OLED dark base: forces dark mode for night-driving use.
+         ui-ux-pro-max dark-mode-oled: deep black #000000, no white backgrounds. -->
+    <style name="AppTheme.Base" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/oled_background</item>
+        <item name="colorPrimary">@color/accent_cyan</item>
+        <item name="colorPrimaryDark">@color/oled_background</item>
+        <item name="colorAccent">@color/accent_cyan</item>
+        <!-- Force dark: this is a night-driving companion app -->
+        <item name="android:forceDarkAllowed">false</item>
     </style>
 
     <style name="AppTheme" parent="AppTheme.Base" />
 
-    <style name="SettingsSectionTitle" parent="TextAppearance.AppCompat.Title">
+    <!-- Card: dark surface with subtle border instead of shadow (OLED-friendly).
+         Per skill: tonal elevation via overlay colors, not harsh box-shadows. -->
+    <style name="OledCard" parent="Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">@color/oled_surface</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeColor">@color/oled_border</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="cardCornerRadius">12dp</item>
+    </style>
+
+    <style name="SettingsSectionTitle" parent="TextAppearance.MaterialComponents.Subtitle1">
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/accent_cyan</item>
         <item name="android:paddingBottom">8dp</item>
+    </style>
+
+    <style name="SettingsBodyText" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textColor">@color/text_secondary</item>
     </style>
 
 </resources>
