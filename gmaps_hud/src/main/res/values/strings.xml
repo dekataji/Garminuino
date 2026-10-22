@@ -124,11 +124,20 @@
         <item>Arrival time</item>
         <item>Cycle</item>
     </string-array>
+    <string-array name="speed_units">
+        <item>@string/speed_unit_kph</item>
+        <item>@string/speed_unit_mph</item>
+        <item>@string/speed_unit_mps</item>
+    </string-array>
 
     <string name="settings_section_safety">Safety</string>
     <string name="layout_element_overspeed_alert">Overspeed alert</string>
     <string name="layout_overspeed_threshold">Alert above limit + %1$d km/h</string>
     <string name="layout_element_speed_camera_alerts">Speed camera alerts</string>
+    <string name="layout_element_speed_unit">Speed unit</string>
+    <string name="speed_unit_kph">km/h</string>
+    <string name="speed_unit_mph">mph</string>
+    <string name="speed_unit_mps">m/s</string>
 
     <string name="settings_section_display">Display</string>
     <string name="layout_element_idle_clock">Idle clock</string>
