@@ -227,6 +227,19 @@
                             android:checked="true"
                             android:text="@string/layout_element_speed_camera_alerts"
                             android:textSize="@dimen/option_text_size" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/layout_element_speed_unit"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <Spinner
+                            android:id="@+id/spinnerSpeedUnit"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:entries="@array/speed_units" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
