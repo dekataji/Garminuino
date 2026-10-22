@@ -181,6 +181,7 @@ public class NotificationMonitor extends NotificationListenerService {
 
     private int mEtaDisplayMode = ETA_MODE_OFF;
     private boolean mEtaCycleShowRemaining = true;
+    private boolean mEtaCyclerRunning = false;
     private static final long ETA_CYCLE_INTERVAL_MS = 10_000L;
 
     private boolean mRoundaboutExitNumbersEnabled = true;
@@ -294,7 +295,7 @@ public class NotificationMonitor extends NotificationListenerService {
         mMonitorHandler.removeCallbacks(mRetryArrowUpdate);
         mMonitorHandler.removeCallbacks(mRetryDistanceUpdate);
         mMonitorHandler.removeCallbacks(mNextPreviewAlternator);
-        mMonitorHandler.removeCallbacks(mEtaCycler);
+        stopEtaCycler();
         if (mMsgReceiver != null) {
             unregisterReceiver(mMsgReceiver);
         }
@@ -1972,6 +1973,7 @@ public class NotificationMonitor extends NotificationListenerService {
         @Override
         public void run() {
             if (mEtaDisplayMode != ETA_MODE_CYCLE || sHud == null || !mIsNavigating) {
+                mEtaCyclerRunning = false;
                 return;
             }
             mEtaCycleShowRemaining = !mEtaCycleShowRemaining;
@@ -1986,15 +1988,20 @@ public class NotificationMonitor extends NotificationListenerService {
         }
         // Don't reset an already-running cycler: updateHudInformation() calls this
         // on every HUD tick, and resetting mEtaCycleShowRemaining would pin the
-        // display on REMAINING forever.
-        if (mMonitorHandler.hasCallbacks(mEtaCycler)) {
+        // display on REMAINING forever. An explicit flag is used instead of
+        // Handler.hasCallbacks(): the callback is dequeued while run() executes,
+        // so hasCallbacks() can briefly return false mid-cycle and allow a
+        // duplicate cycler to be posted.
+        if (mEtaCyclerRunning) {
             return;
         }
         mEtaCycleShowRemaining = true;
+        mEtaCyclerRunning = true;
         mMonitorHandler.postDelayed(mEtaCycler, ETA_CYCLE_INTERVAL_MS);
     }
 
     private void stopEtaCycler() {
+        mEtaCyclerRunning = false;
         mMonitorHandler.removeCallbacks(mEtaCycler);
     }
 
