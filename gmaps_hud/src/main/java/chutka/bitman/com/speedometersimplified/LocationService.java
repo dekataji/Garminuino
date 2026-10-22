@@ -6,8 +6,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
@@ -23,6 +25,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -54,8 +57,8 @@ public class LocationService extends Service {
     private FusedLocationProviderClient mLocationClient;
     private boolean mReceivingUpdates;
 
-    // Cached safety preferences (read once per service start; the service is
-    // restarted when settings change via the existing broadcast flow).
+    // Cached safety preferences. Refreshed on service start and whenever
+    // MainActivity broadcasts a safety-pref change (see notifySafetyPrefsChanged).
     private boolean mOverspeedAlert = true;
     private int mOverspeedThresholdKmh = 5;
     private boolean mSpeedCameraAlerts = true;
@@ -67,6 +70,13 @@ public class LocationService extends Service {
         mOverspeedThresholdKmh = prefs.getInt(getString(R.string.overspeed_threshold_kmh), 5);
         mSpeedCameraAlerts = prefs.getBoolean(getString(R.string.speed_camera_alerts), true);
     }
+
+    private final BroadcastReceiver mPrefsReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            reloadSafetyPrefs();
+        }
+    };
 
     private final LocationCallback mLocationCallback = new LocationCallback() {
         @Override
@@ -141,6 +151,10 @@ public class LocationService extends Service {
         super.onCreate();
         mLocationClient = LocationServices.getFusedLocationProviderClient(this);
         reloadSafetyPrefs();
+        IntentFilter prefsFilter = new IntentFilter();
+        prefsFilter.addAction(getString(R.string.broadcast_receiver_location_service));
+        ContextCompat.registerReceiver(
+                this, mPrefsReceiver, prefsFilter, ContextCompat.RECEIVER_NOT_EXPORTED);
         createNotificationChannel();
     }
 
@@ -173,6 +187,11 @@ public class LocationService extends Service {
 
     @Override
     public void onDestroy() {
+        try {
+            unregisterReceiver(mPrefsReceiver);
+        } catch (IllegalArgumentException ignored) {
+            // Already unregistered; safe to ignore.
+        }
         if (mReceivingUpdates) {
             mLocationClient.removeLocationUpdates(mLocationCallback);
             mReceivingUpdates = false;
