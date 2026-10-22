@@ -102,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
     SwitchCompat mRoundaboutExitNumbersSwitch;
     SwitchCompat mRerouteIndicatorSwitch;
     Spinner mEtaModeSpinner;
+    Spinner mSpeedUnitSpinner;
 
     //safety
     SwitchCompat mShowSpeedSwitch;
@@ -278,6 +279,8 @@ public class MainActivity extends AppCompatActivity {
                 getString(R.string.overspeed_threshold_kmh), 5);
         final boolean optionSpeedCameraAlerts = mSharedPrefs.getBoolean(
                 getString(R.string.speed_camera_alerts), true);
+        final int optionSpeedUnit = mSharedPrefs.getInt(
+                getString(R.string.speed_unit), 0);
 
         final boolean optionIdleClock = mSharedPrefs.getBoolean(
                 getString(R.string.option_idle_clock), true);
@@ -317,6 +320,8 @@ public class MainActivity extends AppCompatActivity {
             mOverspeedThresholdLabel.setText(
                     getString(R.string.layout_overspeed_threshold, optionOverspeedThreshold));
             mOverspeedThresholdSeekbar.setOnSeekBarChangeListener(mOverspeedThresholdChangeListener);
+            mSpeedUnitSpinner.setSelection(optionSpeedUnit);
+            mSpeedUnitSpinner.setOnItemSelectedListener(mSpeedUnitSelectedListener);
             mSpeedCameraAlertsSwitch.setChecked(optionSpeedCameraAlerts);
 
             mIdleClockSwitch.setChecked(optionIdleClock);
@@ -343,6 +348,19 @@ public class MainActivity extends AppCompatActivity {
                     sendIntExtraByBroadcast(
                             getString(R.string.broadcast_receiver_notification_monitor),
                             getString(R.string.eta_display_mode), position);
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {
+                }
+            };
+
+    private AdapterView.OnItemSelectedListener mSpeedUnitSelectedListener =
+            new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    storeIntOptions(R.string.speed_unit, position);
+                    notifySafetyPrefsChanged();
                 }
 
                 @Override
@@ -645,6 +663,7 @@ public class MainActivity extends AppCompatActivity {
         mOverspeedThresholdSeekbar = findViewById(R.id.seekbarOverspeedThreshold);
         mOverspeedThresholdLabel = findViewById(R.id.textOverspeedThreshold);
         mSpeedCameraAlertsSwitch = findViewById(R.id.switchSpeedCameraAlerts);
+        mSpeedUnitSpinner = findViewById(R.id.spinnerSpeedUnit);
 
         mAutoBrightnessSwitch = findViewById(R.id.switchAutoBrightness);
         mBrightnessSeekbar = findViewById(R.id.seekBarBrightness);
