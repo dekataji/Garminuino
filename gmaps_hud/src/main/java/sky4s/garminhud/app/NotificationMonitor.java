@@ -1001,6 +1001,9 @@ public class NotificationMonitor extends NotificationListenerService {
         mReroutingActive = false;
         mNextManeuver = Arrow.None;
         mNextManeuverV2 = ArrowV2.None;
+        if (sHud != null) {
+            sHud.setAlphabet((char) 0, (char) 0, (char) 0, (char) 0);
+        }
         if (sHud != null && mLastTextLaneOutline != -1) {
             sHud.setLanes((char) 0, (char) 0);
             mLastTextLaneOutline = -1;
@@ -1595,10 +1598,51 @@ public class NotificationMonitor extends NotificationListenerService {
 
     private Arrow mPreArrowV1 = Arrow.None;
 
+    /**
+     * Shows a text glyph for the destination's side of the road when the
+     * navigation instruction names it ("destination on the left/right").
+     * Uses the HUD's 4-character text field; cleared for all other arrows.
+     */
+    private void updateSideOfRoadGlyph(Arrow arrow) {
+        if (sHud == null) {
+            return;
+        }
+        switch (arrow) {
+            case ArrivalsLeft:
+                sHud.setAlphabet('L', 'E', 'F', 'T');
+                break;
+            case ArrivalsRight:
+                sHud.setAlphabet('R', 'G', 'H', 'T');
+                break;
+            default:
+                sHud.setAlphabet((char) 0, (char) 0, (char) 0, (char) 0);
+                break;
+        }
+    }
+
+    /** ArrowV2 variant of the side-of-road glyph. */
+    private void updateSideOfRoadGlyphV2(ArrowV2 arrow) {
+        if (sHud == null) {
+            return;
+        }
+        switch (arrow) {
+            case ArrivalsLeft:
+                sHud.setAlphabet('L', 'E', 'F', 'T');
+                break;
+            case ArrivalsRight:
+                sHud.setAlphabet('R', 'G', 'H', 'T');
+                break;
+            default:
+                sHud.setAlphabet((char) 0, (char) 0, (char) 0, (char) 0);
+                break;
+        }
+    }
+
     void updateArrow(Arrow arrow) {
         if (null == sHud) {
             return;
         }
+        updateSideOfRoadGlyph(arrow);
         if (mPreArrowV1 != arrow) {
             mPreArrowV1 = arrow;
         }
@@ -1759,6 +1803,7 @@ public class NotificationMonitor extends NotificationListenerService {
         if (null == sHud) {
             return;
         }
+        updateSideOfRoadGlyphV2(arrow);
         if (mPreArrowV2 != arrow) {
             mPreArrowV2 = arrow;
         }
