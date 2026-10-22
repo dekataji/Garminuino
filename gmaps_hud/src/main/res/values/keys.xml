@@ -30,6 +30,7 @@
     <string name="overspeed_alert" translatable="false">overspeed_alert</string>
     <string name="overspeed_threshold_kmh" translatable="false">overspeed_threshold_kmh</string>
     <string name="speed_camera_alerts" translatable="false">speed_camera_alerts</string>
+    <string name="speed_unit" translatable="false">speed_unit</string>
 
     <string name="option_show_prompt" translatable="false">option_show_prompt</string>
 
