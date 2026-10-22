@@ -41,7 +41,6 @@ import sky4s.garminhud.app.MainActivity;
 import sky4s.garminhud.app.NotificationMonitor;
 import sky4s.garminhud.app.R;
 import sky4s.garminhud.app.navigation.OsmRoadDataProvider;
-import sky4s.garminhud.eUnits;
 import sky4s.garminhud.hud.HUDInterface;
 
 public class LocationService extends Service {
@@ -63,12 +62,33 @@ public class LocationService extends Service {
     private int mOverspeedThresholdKmh = 5;
     private boolean mSpeedCameraAlerts = true;
 
+    // Speed display unit: 0 = km/h, 1 = mph, 2 = m/s. Overspeed logic always
+    // runs in km/h; only the HUD display value is converted.
+    public static final int SPEED_UNIT_KPH = 0;
+    public static final int SPEED_UNIT_MPH = 1;
+    public static final int SPEED_UNIT_MPS = 2;
+    private int mSpeedUnit = SPEED_UNIT_KPH;
+
     private void reloadSafetyPrefs() {
         SharedPreferences prefs = getSharedPreferences(
                 MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
         mOverspeedAlert = prefs.getBoolean(getString(R.string.overspeed_alert), true);
         mOverspeedThresholdKmh = prefs.getInt(getString(R.string.overspeed_threshold_kmh), 5);
         mSpeedCameraAlerts = prefs.getBoolean(getString(R.string.speed_camera_alerts), true);
+        mSpeedUnit = prefs.getInt(getString(R.string.speed_unit), SPEED_UNIT_KPH);
+    }
+
+    /** Converts a km/h value to the configured display unit. */
+    private int toDisplaySpeed(double speedKmh) {
+        switch (mSpeedUnit) {
+            case SPEED_UNIT_MPH:
+                return (int) Math.round(speedKmh / 1.609344);
+            case SPEED_UNIT_MPS:
+                return (int) Math.round(speedKmh / 3.6);
+            case SPEED_UNIT_KPH:
+            default:
+                return (int) Math.round(speedKmh);
+        }
     }
 
     private final BroadcastReceiver mPrefsReceiver = new BroadcastReceiver() {
@@ -86,12 +106,11 @@ public class LocationService extends Service {
                 return;
             }
 
-            eUnits units = NotificationMonitor.getCurrentUnit();
-            speed = units == eUnits.Miles
-                    ? location.getSpeed() * 2.23693629
-                    : location.getSpeed() * 3.6;
-
-            int roundedSpeed = (int) Math.round(speed);
+            double speedKmh = location.getSpeed() * 3.6;
+            int roundedSpeedKmh = (int) Math.round(speedKmh);
+            // Display value in the user's chosen unit; overspeed logic below
+            // always compares km/h against the km/h limit + threshold.
+            int roundedSpeed = toDisplaySpeed(speedKmh);
             Log.v(TAG, "GPS speed=" + roundedSpeed);
 
             // Refresh OSM road data in the background; results land in
@@ -118,17 +137,19 @@ public class LocationService extends Service {
 
             if (speedLimit > 0) {
                 boolean speeding = mOverspeedAlert
-                        && roundedSpeed > speedLimit + mOverspeedThresholdKmh;
+                        && roundedSpeedKmh > speedLimit + mOverspeedThresholdKmh;
                 // setSpeedWarning(speed, limit, speeding, showIcon, showSlash):
                 // slash overlay disabled - the threshold-gated warning is less
                 // aggressive than the old immediate trigger, so the slash would
-                // over-signal. Icon still shows.
-                hud.setSpeedWarning(roundedSpeed, speedLimit, speeding, true, false);
+                // over-signal. Icon still shows. Limit is converted to the
+                // display unit so the HUD shows consistent numbers.
+                int displayLimit = toDisplaySpeed(speedLimit);
+                hud.setSpeedWarning(roundedSpeed, displayLimit, speeding, true, false);
             } else {
                 hud.setSpeed(roundedSpeed, true);
             }
             hud.setCameraIcon(mSpeedCameraAlerts && HudNavigationState.isFreshSpeedCameraAhead());
-            sendSpeedToVisibleActivity(speed);
+            sendSpeedToVisibleActivity(roundedSpeed);
         }
     };
 
