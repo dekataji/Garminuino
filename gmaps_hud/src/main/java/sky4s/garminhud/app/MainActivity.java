@@ -199,6 +199,13 @@ public class MainActivity extends AppCompatActivity {
         sendBroadcast(intent);
     }
 
+    /** Tells LocationService to re-read the cached safety prefs (overspeed / camera alerts). */
+    private void notifySafetyPrefsChanged() {
+        Intent intent = new Intent(getString(R.string.broadcast_receiver_location_service))
+                .setPackage(getPackageName());
+        sendBroadcast(intent);
+    }
+
     private SeekBar.OnSeekBarChangeListener mOverspeedThresholdChangeListener =
             new SeekBar.OnSeekBarChangeListener() {
                 @Override
@@ -209,6 +216,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     if (fromUser) {
                         storeIntOptions(R.string.overspeed_threshold_kmh, progress);
+                        notifySafetyPrefsChanged();
                     }
                 }
 
@@ -977,10 +985,12 @@ public class MainActivity extends AppCompatActivity {
 
                 case R.id.switchOverspeedAlert:
                     storeOptions(R.string.overspeed_alert, view.isChecked());
+                    notifySafetyPrefsChanged();
                     break;
 
                 case R.id.switchSpeedCameraAlerts:
                     storeOptions(R.string.speed_camera_alerts, view.isChecked());
+                    notifySafetyPrefsChanged();
                     break;
 
                 case R.id.switchIdleClock:
