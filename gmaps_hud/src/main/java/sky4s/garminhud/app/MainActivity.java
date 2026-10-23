@@ -43,10 +43,12 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.CompoundButton;
 import android.widget.Button;
+import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.graphics.Typeface;
 import android.content.res.ColorStateList;
 
 import com.google.android.material.navigation.NavigationView;
@@ -444,6 +446,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mExportDiagnosticsButton.setOnClickListener(view -> exportNavigationDiagnostics());
+        Button iconMappingButton = findViewById(R.id.buttonIconMapping);
+        iconMappingButton.setOnClickListener(view -> showIconMappingDialog());
         mClearDiagnosticsButton.setOnClickListener(view -> new AlertDialog.Builder(this)
                 .setTitle(R.string.title_clear_navigation_diagnostics)
                 .setMessage(R.string.message_clear_navigation_diagnostics)
@@ -509,6 +513,25 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         }, "diagnostics-clear").start();
+    }
+
+    /** Shows the Google Maps maneuver → Garmin HUD mapping in a scrollable dialog. */
+    private void showIconMappingDialog() {
+        TextView textView = new TextView(this);
+        textView.setText(ManeuverIconMap.buildDisplayText());
+        textView.setTypeface(Typeface.MONOSPACE);
+        textView.setTextSize(13);
+        int padding = (int) (16 * getResources().getDisplayMetrics().density);
+        textView.setPadding(padding, padding, padding, padding);
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.addView(textView);
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.settings_section_icons)
+                .setView(scrollView)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
 
     private HUDInterface.ConnectionCallback mHudConnectionCallback = new HUDInterface.ConnectionCallback() {
