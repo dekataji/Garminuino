@@ -987,6 +987,21 @@ public class NotificationMonitor extends NotificationListenerService {
         return mIsNavigating;
     }
 
+    private String mCustomLaneManeuver = null;
+
+    /**
+     * Clears a stale custom lane pattern when leaving a maneuver that had one.
+     * Call before applying the new maneuver's mapping.
+     */
+    private void clearStaleCustomLane(String newManeuver) {
+        if (mCustomLaneManeuver != null && !mCustomLaneManeuver.equals(newManeuver)) {
+            if (sHud != null) {
+                sHud.setLanes((char) 0, (char) 0);
+            }
+            mCustomLaneManeuver = null;
+        }
+    }
+
     private final Runnable mStopNavigationSession = () -> {
         if (hasActiveSupportedNavigation()) {
             return;
@@ -1001,10 +1016,11 @@ public class NotificationMonitor extends NotificationListenerService {
         mReroutingActive = false;
         mNextManeuver = Arrow.None;
         mNextManeuverV2 = ArrowV2.None;
-        if (sHud != null && mLastTextLaneOutline != -1) {
+        if (sHud != null && (mLastTextLaneOutline != -1 || mCustomLaneManeuver != null)) {
             sHud.setLanes((char) 0, (char) 0);
             mLastTextLaneOutline = -1;
             mLastTextLaneArrow = -1;
+            mCustomLaneManeuver = null;
         }
         if (mPostman != null) {
             // AutoMapa replaces its ongoing notification instead of updating it in place on
@@ -1332,6 +1348,11 @@ public class NotificationMonitor extends NotificationListenerService {
         if (sHud == null || !mTextLaneGuidanceEnabled) {
             return;
         }
+        // A custom lane pattern for this maneuver takes precedence over parsed guidance.
+        ManeuverCustomizer.Override ov = ManeuverCustomizer.getOverride(this, maneuver.name());
+        if (ov != null && ov.laneMask >= 0) {
+            return;
+        }
         if (guidance != null && guidance.hasRecommendation()) {
             if (guidance.outlineMask != mLastTextLaneOutline
                     || guidance.arrowMask != mLastTextLaneArrow) {
@@ -1594,7 +1615,7 @@ public class NotificationMonitor extends NotificationListenerService {
     }
 
     private Arrow mPreArrowV1 = Arrow.None;
-
+    /** Maneuver name that last set a custom lane pattern, or null. */
     void updateArrow(Arrow arrow) {
         if (null == sHud) {
             return;
@@ -1603,7 +1624,13 @@ public class NotificationMonitor extends NotificationListenerService {
             mPreArrowV1 = arrow;
         }
         // User-customized mapping takes precedence over the built-in one.
-        if (ManeuverCustomizer.applyOverride(this, arrow.name(), sHud)) {
+        clearStaleCustomLane(arrow.name());
+        ManeuverCustomizer.Override customOv = ManeuverCustomizer.getOverride(this, arrow.name());
+        if (customOv != null) {
+            if (customOv.laneMask >= 0) {
+                mCustomLaneManeuver = arrow.name();
+            }
+            ManeuverCustomizer.applyOverride(this, arrow.name(), sHud);
             return;
         }
         switch (arrow) {
@@ -1771,7 +1798,13 @@ public class NotificationMonitor extends NotificationListenerService {
             mPreArrowV2 = arrow;
         }
         // User-customized mapping takes precedence over the built-in one.
-        if (ManeuverCustomizer.applyOverride(this, arrow.name(), sHud)) {
+        clearStaleCustomLane(arrow.name());
+        ManeuverCustomizer.Override customOv = ManeuverCustomizer.getOverride(this, arrow.name());
+        if (customOv != null) {
+            if (customOv.laneMask >= 0) {
+                mCustomLaneManeuver = arrow.name();
+            }
+            ManeuverCustomizer.applyOverride(this, arrow.name(), sHud);
             return;
         }
         switch (arrow) {
