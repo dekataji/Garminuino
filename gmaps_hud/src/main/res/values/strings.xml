@@ -154,6 +154,8 @@
     <string name="label_hud_type">HUD style</string>
     <string name="label_custom_text">Custom text (4 chars, optional)</string>
     <string name="action_save">Save</string>
+    <string name="action_export">Export</string>
+    <string name="action_import">Import</string>
     <string name="action_reset">Reset</string>
     <string name="action_reset_all">Reset all</string>
     <string name="message_mapping_saved">Mapping saved for %1$s</string>
