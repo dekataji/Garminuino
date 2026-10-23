@@ -29,6 +29,7 @@ public class CustomizeMappingActivity extends Activity {
     private eOutType selectedType = eOutType.ArrowOnly;
     private EditText textInput;
     private HudGlyphView previewView;
+    private LanePatternView lanePatternView;
     private TextView previewLabel;
 
     @Override
@@ -120,6 +121,17 @@ public class CustomizeMappingActivity extends Activity {
         textInput.setHintTextColor(0xFF808080);
         root.addView(textInput);
 
+        root.addView(sectionTitle("5 · Lane pattern (tap segments, optional)"));
+        lanePatternView = new LanePatternView(this);
+        lanePatternView.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(lanePatternView);
+        TextView laneHint = new TextView(this);
+        laneHint.setText("Empty = no custom pattern (lane guidance untouched)");
+        laneHint.setTextSize(11);
+        laneHint.setTextColor(0xFF808080);
+        root.addView(laneHint);
+
         root.addView(sectionTitle("Preview"));
         previewView = new HudGlyphView(this);
         previewView.setLayoutParams(new LinearLayout.LayoutParams(dp(140), dp(140)));
@@ -136,9 +148,11 @@ public class CustomizeMappingActivity extends Activity {
         Button save = new Button(this);
         save.setText("Save");
         save.setOnClickListener(v -> {
+            int laneMask = lanePatternView.getMask();
             ManeuverCustomizer.saveOverride(this, selectedManeuver,
                     selectedAngle.name(), selectedType.name(),
-                    textInput.getText().toString());
+                    textInput.getText().toString(),
+                    laneMask == 0 ? -1 : laneMask);
             Toast.makeText(this, selectedManeuver + " saved", Toast.LENGTH_SHORT).show();
         });
         Button reset = new Button(this);
@@ -177,6 +191,7 @@ public class CustomizeMappingActivity extends Activity {
         selectedAngle = ov != null ? ov.angle : eOutAngle.valueOf(def[0]);
         selectedType = ov != null ? ov.type : eOutType.valueOf(def[1]);
         textInput.setText(ov != null ? ov.text : "");
+        lanePatternView.setMask(ov != null && ov.laneMask >= 0 ? ov.laneMask : 0);
         updatePreview();
     }
 
@@ -199,8 +214,10 @@ public class CustomizeMappingActivity extends Activity {
     private void updatePreview() {
         previewView.setGlyph(selectedAngle, selectedType);
         String t = textInput.getText().toString();
+        int lm = lanePatternView != null ? lanePatternView.getMask() : 0;
         previewLabel.setText(selectedManeuver + " → " + selectedAngle.name()
-                + " + " + selectedType.name() + (t.isEmpty() ? "" : " + \"" + t + "\""));
+                + " + " + selectedType.name() + (t.isEmpty() ? "" : " + \"" + t + "\"")
+                + (lm == 0 ? "" : String.format(" + lanes 0x%02X", lm)));
         // refresh cell highlights
         Object[] tags = (Object[]) getWindow().getDecorView().getTag();
         if (tags != null) {
