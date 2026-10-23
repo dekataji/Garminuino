@@ -32,11 +32,14 @@ public final class ManeuverCustomizer {
         public final eOutAngle angle;
         public final eOutType type;
         public final String text;
+        /** Lane pattern bitmask, or -1 when no custom pattern. */
+        public final int laneMask;
 
-        Override(eOutAngle angle, eOutType type, String text) {
+        Override(eOutAngle angle, eOutType type, String text, int laneMask) {
             this.angle = angle;
             this.type = type;
             this.text = text;
+            this.laneMask = laneMask;
         }
     }
 
@@ -69,7 +72,8 @@ public final class ManeuverCustomizer {
             eOutAngle angle = eOutAngle.valueOf(o.optString("angle", "Straight"));
             eOutType type = eOutType.valueOf(o.optString("type", "Lane"));
             String text = o.optString("text", "");
-            return new Override(angle, type, text);
+            int laneMask = o.optInt("laneMask", -1);
+            return new Override(angle, type, text, laneMask);
         } catch (Exception e) {
             return null;
         }
@@ -77,17 +81,25 @@ public final class ManeuverCustomizer {
 
     /** Saves (or replaces) the override for a maneuver. */
     public static void saveOverride(Context context, String maneuver,
-                                    String angleName, String typeName, String text) {
+                                    String angleName, String typeName, String text,
+                                    int laneMask) {
         try {
             JSONObject all = loadAll(context);
             JSONObject o = new JSONObject();
             o.put("angle", angleName);
             o.put("type", typeName);
             o.put("text", text == null ? "" : text);
+            o.put("laneMask", laneMask);
             all.put(maneuver, o);
             storeAll(context, all);
         } catch (Exception ignored) {
         }
+    }
+
+    /** Saves (or replaces) the override for a maneuver (no lane pattern). */
+    public static void saveOverride(Context context, String maneuver,
+                                    String angleName, String typeName, String text) {
+        saveOverride(context, maneuver, angleName, typeName, text, -1);
     }
 
     /** Removes the override for one maneuver, restoring its default mapping. */
@@ -126,6 +138,7 @@ public final class ManeuverCustomizer {
                 eOutAngle.valueOf(o.getString("angle"));
                 eOutType.valueOf(o.getString("type"));
                 o.optString("text", "");
+                o.optInt("laneMask", -1);
             }
             storeAll(context, all);
             return true;
@@ -151,6 +164,9 @@ public final class ManeuverCustomizer {
             }
         }
         hud.setAlphabet(t[0], t[1], t[2], t[3]);
+        if (ov.laneMask >= 0) {
+            hud.setLanes((char) ov.laneMask, (char) 0);
+        }
         return true;
     }
 }
