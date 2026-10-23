@@ -1602,6 +1602,10 @@ public class NotificationMonitor extends NotificationListenerService {
         if (mPreArrowV1 != arrow) {
             mPreArrowV1 = arrow;
         }
+        // User-customized mapping takes precedence over the built-in one.
+        if (ManeuverCustomizer.applyOverride(this, arrow.name(), sHud)) {
+            return;
+        }
         switch (arrow) {
             case Arrivals:
                 sHud.setDirection(eOutAngle.Straight, eOutType.RightFlag, eOutAngle.AsDirection);
@@ -1765,6 +1769,10 @@ public class NotificationMonitor extends NotificationListenerService {
         }
         if (mPreArrowV2 != arrow) {
             mPreArrowV2 = arrow;
+        }
+        // User-customized mapping takes precedence over the built-in one.
+        if (ManeuverCustomizer.applyOverride(this, arrow.name(), sHud)) {
+            return;
         }
         switch (arrow) {
             case ArrivalsLeft:
