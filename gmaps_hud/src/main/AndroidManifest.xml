@@ -46,6 +46,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".CustomizeMappingActivity"
+            android:exported="false"
+            android:label="@string/title_customize_mapping"
+            android:theme="@style/AppTheme" />
+
         <service
             android:name=".ScreenRecorderService"
             android:enabled="true"
