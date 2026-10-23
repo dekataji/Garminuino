@@ -145,6 +145,8 @@
     <string name="settings_section_session">Session</string>
     <string name="settings_section_advanced">Advanced</string>
     <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_icons">Direction icons</string>
+    <string name="layout_element_icon_mapping">Show maneuver → HUD mapping</string>
 
 
 </resources>
