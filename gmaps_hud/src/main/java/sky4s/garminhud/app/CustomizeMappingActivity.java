@@ -45,7 +45,7 @@ public class CustomizeMappingActivity extends Activity {
 
         root.addView(sectionTitle("1 · Maneuver (Google Maps icon)"));
         GridLayout maneuverGrid = new GridLayout(this);
-        maneuverGrid.setColumnCount(5);
+        maneuverGrid.setColumnCount(4);
         root.addView(maneuverGrid);
         final MapsIconView[] maneuverCells = new MapsIconView[maneuvers.length];
         for (int i = 0; i < maneuvers.length; i++) {
@@ -61,14 +61,14 @@ public class CustomizeMappingActivity extends Activity {
                 }
                 loadManeuverState();
             });
-            maneuverGrid.addView(labeledCell(v, shortName(m)));
+            maneuverGrid.addView(labeledCell(v, m));
             maneuverCells[i] = v;
         }
         maneuverCells[0].setSelected(true);
 
         root.addView(sectionTitle("2 · HUD arrow glyph"));
         GridLayout arrowGrid = new GridLayout(this);
-        arrowGrid.setColumnCount(5);
+        arrowGrid.setColumnCount(4);
         root.addView(arrowGrid);
         final eOutAngle[] angles = eOutAngle.values();
         final HudGlyphView[] arrowCells = new HudGlyphView[angles.length];
@@ -233,9 +233,9 @@ public class CustomizeMappingActivity extends Activity {
 
     private GridLayout.LayoutParams cellParams() {
         GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-        lp.width = dp(76);
+        lp.width = dp(84);
         lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-        lp.setMargins(dp(2), dp(2), dp(2), dp(2));
+        lp.setMargins(dp(4), dp(4), dp(4), dp(4));
         return lp;
     }
 
@@ -244,12 +244,19 @@ public class CustomizeMappingActivity extends Activity {
         LinearLayout cell = new LinearLayout(this);
         cell.setOrientation(LinearLayout.VERTICAL);
         cell.setGravity(Gravity.CENTER_HORIZONTAL);
+        cell.setPadding(dp(4), dp(6), dp(4), dp(6));
         cell.addView(glyph);
         TextView label = new TextView(this);
         label.setText(labelText);
-        label.setTextSize(10);
+        label.setTextSize(11);
+        label.setMaxLines(2);
+        label.setEllipsize(android.text.TextUtils.TruncateAt.END);
         label.setGravity(Gravity.CENTER);
         label.setTextColor(0xFFB0B0B0);
+        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        llp.topMargin = dp(4);
+        label.setLayoutParams(llp);
         cell.addView(label);
         cell.setLayoutParams(cellParams());
         return cell;
