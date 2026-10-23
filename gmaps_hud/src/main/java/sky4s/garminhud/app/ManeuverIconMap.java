@@ -25,7 +25,7 @@ public final class ManeuverIconMap {
             {"KeepRight", "Keep right", "Slight-right arrow"},
             {"LeaveRoundabout*", "Roundabout exit (16 variants:\nstraight/left/right/sharp, clockwise +\ncounter-clockwise)", "Roundabout icon + exit-spoke arrow"},
             {"Left", "Turn left", "Left arrow"},
-            {"LeftDown", "Bear left-down (rare)", "Left-down arrow"},
+            {"LeftDown", "U-turn", "U-turn arrow"},
             {"LeftToLeave", "Take exit on the left", "Slight-left arrow + lane"},
             {"Right", "Turn right", "Right arrow"},
             {"RightDown", "Bear right-down (rare)", "Right-down arrow"},
