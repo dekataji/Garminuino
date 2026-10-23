@@ -3,4 +3,7 @@
     <cache-path
         name="diagnostic_exports"
         path="diagnostic-exports/" />
+    <cache-path
+        name="mapping_exports"
+        path="mapping-exports/" />
 </paths>
