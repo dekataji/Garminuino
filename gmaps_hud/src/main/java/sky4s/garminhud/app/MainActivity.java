@@ -573,9 +573,6 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(pick, REQUEST_IMPORT_MAPPING);
     }
 
-    @Override
-
-    /** Editor dialog for per-maneuver HUD mapping overrides. */
     private HUDInterface.ConnectionCallback mHudConnectionCallback = new HUDInterface.ConnectionCallback() {
         @Override
         public void onConnectionStateChange(ConnectionState state) {
