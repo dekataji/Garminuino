@@ -95,7 +95,8 @@ public class MapsIconView extends View {
         } else if (m.equals("SharpRight")) {
             drawTurn(canvas, cx, cy, s, false, true);
         } else if (m.equals("LeftDown")) {
-            drawArrow(canvas, cx, cy, -135, s);
+            // U-turn (the parser maps u-turn instructions to LeftDown)
+            drawUTurn(canvas, cx, cy, s);
         } else if (m.equals("RightDown")) {
             drawArrow(canvas, cx, cy, -45, s);
         } else if (m.equals("LeftToLeave")) {
@@ -165,6 +166,20 @@ public class MapsIconView extends View {
         drawHead(c, cx, cy - s * 0.9f, 90, s * 0.38f);
         c.drawLine(cx, cy + s * 0.1f, cx + dir * s * 0.7f, cy - s * 0.5f, paint);
         drawHead(c, cx + dir * s * 0.7f, cy - s * 0.5f, left ? 135 : 45, s * 0.32f);
+    }
+
+    /** U-turn: arrow goes up, loops around and points back down. */
+    private void drawUTurn(Canvas c, float cx, float cy, float s) {
+        Path p = new Path();
+        p.moveTo(cx - s * 0.45f, cy + s * 0.9f);
+        p.lineTo(cx - s * 0.45f, cy - s * 0.2f);
+        // loop over the top
+        p.cubicTo(cx - s * 0.45f, cy - s * 0.9f,
+                cx + s * 0.45f, cy - s * 0.9f,
+                cx + s * 0.45f, cy - s * 0.2f);
+        p.lineTo(cx + s * 0.45f, cy + s * 0.55f);
+        c.drawPath(p, paint);
+        drawHead(c, cx + s * 0.45f, cy + s * 0.55f, -90, s * 0.42f);
     }
 
     private void drawFlag(Canvas c, float cx, float cy, float s) {
