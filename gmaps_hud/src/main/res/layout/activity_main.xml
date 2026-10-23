@@ -438,6 +438,26 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/layout_element_customize_mapping" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <Button
+                                android:id="@+id/buttonExportMapping"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/action_export" />
+
+                            <Button
+                                android:id="@+id/buttonImportMapping"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/action_import" />
+                        </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
