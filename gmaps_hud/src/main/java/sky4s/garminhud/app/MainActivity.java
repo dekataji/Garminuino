@@ -452,6 +452,10 @@ public class MainActivity extends AppCompatActivity {
         Button customizeMappingButton = findViewById(R.id.buttonCustomizeMapping);
         customizeMappingButton.setOnClickListener(view ->
                 startActivity(new Intent(this, CustomizeMappingActivity.class)));
+        Button exportMappingButton = findViewById(R.id.buttonExportMapping);
+        exportMappingButton.setOnClickListener(view -> exportMapping());
+        Button importMappingButton = findViewById(R.id.buttonImportMapping);
+        importMappingButton.setOnClickListener(view -> importMapping());
         mClearDiagnosticsButton.setOnClickListener(view -> new AlertDialog.Builder(this)
                 .setTitle(R.string.title_clear_navigation_diagnostics)
                 .setMessage(R.string.message_clear_navigation_diagnostics)
@@ -535,6 +539,60 @@ public class MainActivity extends AppCompatActivity {
                 .setView(scrollView)
                 .setPositiveButton(android.R.string.ok, null)
                 .show();
+    }
+
+    private static final int REQUEST_IMPORT_MAPPING = 1401;
+
+    /** Shares the custom maneuver mappings as a JSON file. */
+    private void exportMapping() {
+        try {
+            java.io.File dir = new java.io.File(getCacheDir(), "mapping-exports");
+            dir.mkdirs();
+            java.io.File file = new java.io.File(dir, "hud-mapping.json");
+            java.io.FileWriter w = new java.io.FileWriter(file);
+            w.write(ManeuverCustomizer.exportJson(this));
+            w.close();
+            android.net.Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                    this, getPackageName() + ".fileprovider", file);
+            Intent share = new Intent(Intent.ACTION_SEND);
+            share.setType("application/json");
+            share.putExtra(Intent.EXTRA_STREAM, uri);
+            share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(share, getString(R.string.action_export)));
+        } catch (Exception e) {
+            Log.e(TAG, "Cannot export mapping", e);
+            Toast.makeText(this, "Export failed", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /** Opens a file picker to import custom maneuver mappings. */
+    private void importMapping() {
+        Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        pick.addCategory(Intent.CATEGORY_OPENABLE);
+        pick.setType("application/json");
+        startActivityForResult(pick, REQUEST_IMPORT_MAPPING);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_IMPORT_MAPPING && resultCode == RESULT_OK && data != null
+                && data.getData() != null) {
+            try {
+                java.io.InputStream in = getContentResolver().openInputStream(data.getData());
+                java.util.Scanner s = new java.util.Scanner(in).useDelimiter("\\A");
+                String json = s.hasNext() ? s.next() : "";
+                s.close();
+                if (ManeuverCustomizer.importJson(this, json)) {
+                    Toast.makeText(this, "Mapping imported", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Invalid mapping file", Toast.LENGTH_LONG).show();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Cannot import mapping", e);
+                Toast.makeText(this, "Import failed", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     /** Editor dialog for per-maneuver HUD mapping overrides. */
