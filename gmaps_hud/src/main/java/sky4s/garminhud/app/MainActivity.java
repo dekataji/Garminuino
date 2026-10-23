@@ -574,26 +574,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_IMPORT_MAPPING && resultCode == RESULT_OK && data != null
-                && data.getData() != null) {
-            try {
-                java.io.InputStream in = getContentResolver().openInputStream(data.getData());
-                java.util.Scanner s = new java.util.Scanner(in).useDelimiter("\\A");
-                String json = s.hasNext() ? s.next() : "";
-                s.close();
-                if (ManeuverCustomizer.importJson(this, json)) {
-                    Toast.makeText(this, "Mapping imported", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "Invalid mapping file", Toast.LENGTH_LONG).show();
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Cannot import mapping", e);
-                Toast.makeText(this, "Import failed", Toast.LENGTH_LONG).show();
-            }
-        }
-    }
 
     /** Editor dialog for per-maneuver HUD mapping overrides. */
     private HUDInterface.ConnectionCallback mHudConnectionCallback = new HUDInterface.ConnectionCallback() {
@@ -859,6 +839,25 @@ public class MainActivity extends AppCompatActivity {
         if (HudSessionManager.getInstance(this)
                 .handleActivityResult(requestCode, resultCode, data)) {
             // Activity result was handled by HUD class, stop processing here
+            return;
+        }
+
+        if (requestCode == REQUEST_IMPORT_MAPPING && resultCode == RESULT_OK && data != null
+                && data.getData() != null) {
+            try {
+                java.io.InputStream in = getContentResolver().openInputStream(data.getData());
+                java.util.Scanner s = new java.util.Scanner(in).useDelimiter("\\A");
+                String json = s.hasNext() ? s.next() : "";
+                s.close();
+                if (ManeuverCustomizer.importJson(this, json)) {
+                    Toast.makeText(this, "Mapping imported", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Invalid mapping file", Toast.LENGTH_LONG).show();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Cannot import mapping", e);
+                Toast.makeText(this, "Import failed", Toast.LENGTH_LONG).show();
+            }
             return;
         }
 
