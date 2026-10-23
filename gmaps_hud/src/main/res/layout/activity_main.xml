@@ -432,6 +432,12 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/layout_element_icon_mapping" />
+
+                        <Button
+                            android:id="@+id/buttonCustomizeMapping"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/layout_element_customize_mapping" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
