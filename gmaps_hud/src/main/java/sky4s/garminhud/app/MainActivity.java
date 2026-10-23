@@ -35,12 +35,16 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.text.InputFilter;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 import android.view.OrientationEventListener;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.CompoundButton;
 import android.widget.Button;
 import android.widget.ScrollView;
@@ -75,6 +79,7 @@ import chutka.bitman.com.speedometersimplified.LocationService;
 import sky4s.garminhud.ImageUtils;
 import sky4s.garminhud.app.detect.ImageDetectListener;
 import sky4s.garminhud.eOutAngle;
+import sky4s.garminhud.eOutType;
 import sky4s.garminhud.hud.DummyHUD;
 import sky4s.garminhud.hud.GarminHUD;
 import sky4s.garminhud.hud.HUDInterface;
@@ -448,6 +453,8 @@ public class MainActivity extends AppCompatActivity {
         mExportDiagnosticsButton.setOnClickListener(view -> exportNavigationDiagnostics());
         Button iconMappingButton = findViewById(R.id.buttonIconMapping);
         iconMappingButton.setOnClickListener(view -> showIconMappingDialog());
+        Button customizeMappingButton = findViewById(R.id.buttonCustomizeMapping);
+        customizeMappingButton.setOnClickListener(view -> showCustomizeMappingDialog());
         mClearDiagnosticsButton.setOnClickListener(view -> new AlertDialog.Builder(this)
                 .setTitle(R.string.title_clear_navigation_diagnostics)
                 .setMessage(R.string.message_clear_navigation_diagnostics)
@@ -516,8 +523,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** Shows the Google Maps maneuver → Garmin HUD mapping in a scrollable dialog. */
-    private void showIconMappingDialog() {
-        TextView textView = new TextView(this);
+    private void showIconMappingDialog() {        TextView textView = new TextView(this);
         textView.setText(ManeuverIconMap.buildDisplayText());
         textView.setTypeface(Typeface.MONOSPACE);
         textView.setTextSize(13);
@@ -532,6 +538,130 @@ public class MainActivity extends AppCompatActivity {
                 .setView(scrollView)
                 .setPositiveButton(android.R.string.ok, null)
                 .show();
+    }
+
+    /** Editor dialog for per-maneuver HUD mapping overrides. */
+    private void showCustomizeMappingDialog() {
+        int padding = (int) (16 * getResources().getDisplayMetrics().density);
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(padding, padding, padding, padding);
+
+        String[] maneuvers = ManeuverIconMap.maneuverNames();
+        String[] angles = enumNames(eOutAngle.values());
+        String[] types = enumNames(eOutType.values());
+
+        layout.addView(dialogLabel(getString(R.string.label_maneuver)));
+        Spinner maneuverSpinner = new Spinner(this);
+        maneuverSpinner.setAdapter(new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_dropdown_item, maneuvers));
+        layout.addView(maneuverSpinner);
+
+        layout.addView(dialogLabel(getString(R.string.label_hud_angle)));
+        Spinner angleSpinner = new Spinner(this);
+        angleSpinner.setAdapter(new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_dropdown_item, angles));
+        layout.addView(angleSpinner);
+
+        layout.addView(dialogLabel(getString(R.string.label_hud_type)));
+        Spinner typeSpinner = new Spinner(this);
+        typeSpinner.setAdapter(new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_dropdown_item, types));
+        layout.addView(typeSpinner);
+
+        layout.addView(dialogLabel(getString(R.string.label_custom_text)));
+        EditText textInput = new EditText(this);
+        textInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(4)});
+        textInput.setHint("e.g. LEFT");
+        layout.addView(textInput);
+
+        TextView currentView = new TextView(this);
+        currentView.setTextSize(12);
+        currentView.setPadding(0, padding, 0, 0);
+        layout.addView(currentView);
+
+        Runnable refreshEditor = () -> {
+            String m = (String) maneuverSpinner.getSelectedItem();
+            String[] def = ManeuverIconMap.defaultAngleType(m);
+            ManeuverCustomizer.Override ov = ManeuverCustomizer.getOverride(this, m);
+            String angle = ov != null ? ov.angle.name() : def[0];
+            String type = ov != null ? ov.type.name() : def[1];
+            angleSpinner.setSelection(indexOf(angles, angle));
+            typeSpinner.setSelection(indexOf(types, type));
+            textInput.setText(ov != null ? ov.text : "");
+            currentView.setText(ov != null
+                    ? "Custom: " + angle + " + " + type
+                            + (ov.text.isEmpty() ? "" : " + \"" + ov.text + "\"")
+                    : "Using default: " + def[0] + " + " + def[1]);
+        };
+        maneuverSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> p, View v, int pos, long id) {
+                refreshEditor.run();
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> p) {
+            }
+        });
+        refreshEditor.run();
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.addView(layout);
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.title_customize_mapping)
+                .setView(scrollView)
+                .setPositiveButton(R.string.action_save, (dialog, which) -> {
+                    String m = (String) maneuverSpinner.getSelectedItem();
+                    ManeuverCustomizer.saveOverride(this, m,
+                            (String) angleSpinner.getSelectedItem(),
+                            (String) typeSpinner.getSelectedItem(),
+                            textInput.getText().toString());
+                    Toast.makeText(this, getString(R.string.message_mapping_saved, m),
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNeutralButton(R.string.action_reset, (dialog, which) -> {
+                    String m = (String) maneuverSpinner.getSelectedItem();
+                    ManeuverCustomizer.clearOverride(this, m);
+                    Toast.makeText(this, getString(R.string.message_mapping_reset, m),
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton(R.string.action_reset_all, (dialog, which) ->
+                        new AlertDialog.Builder(this)
+                                .setMessage(R.string.action_reset_all)
+                                .setPositiveButton(R.string.action_reset_all, (d, w) -> {
+                                    ManeuverCustomizer.clearAll(this);
+                                    Toast.makeText(this, R.string.action_reset_all,
+                                            Toast.LENGTH_SHORT).show();
+                                })
+                                .setNegativeButton(android.R.string.cancel, null)
+                                .show())
+                .show();
+    }
+
+    private TextView dialogLabel(String text) {
+        TextView label = new TextView(this);
+        label.setText(text);
+        label.setTextSize(12);
+        return label;
+    }
+
+    private static String[] enumNames(Enum<?>[] values) {
+        String[] names = new String[values.length];
+        for (int i = 0; i < values.length; i++) {
+            names[i] = values[i].name();
+        }
+        return names;
+    }
+
+    private static int indexOf(String[] array, String value) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i].equals(value)) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     private HUDInterface.ConnectionCallback mHudConnectionCallback = new HUDInterface.ConnectionCallback() {
