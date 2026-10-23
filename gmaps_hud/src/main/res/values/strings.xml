@@ -147,6 +147,17 @@
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_section_icons">Direction icons</string>
     <string name="layout_element_icon_mapping">Show maneuver → HUD mapping</string>
+    <string name="layout_element_customize_mapping">Customize mapping</string>
+    <string name="title_customize_mapping">Customize maneuver mapping</string>
+    <string name="label_maneuver">Maneuver</string>
+    <string name="label_hud_angle">HUD arrow</string>
+    <string name="label_hud_type">HUD style</string>
+    <string name="label_custom_text">Custom text (4 chars, optional)</string>
+    <string name="action_save">Save</string>
+    <string name="action_reset">Reset</string>
+    <string name="action_reset_all">Reset all</string>
+    <string name="message_mapping_saved">Mapping saved for %1$s</string>
+    <string name="message_mapping_reset">%1$s restored to default</string>
 
 
 </resources>
