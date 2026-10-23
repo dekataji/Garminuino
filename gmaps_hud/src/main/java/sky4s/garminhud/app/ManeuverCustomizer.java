@@ -107,6 +107,33 @@ public final class ManeuverCustomizer {
         return loadAll(context).length() > 0;
     }
 
+    /** Returns all overrides as a JSON string for export. */
+    public static String exportJson(Context context) {
+        return loadAll(context).toString();
+    }
+
+    /**
+     * Replaces all overrides from an exported JSON string.
+     * Returns false when the input is not a valid overrides object.
+     */
+    public static boolean importJson(Context context, String json) {
+        try {
+            JSONObject all = new JSONObject(json);
+            // validate entries before storing
+            java.util.Iterator<String> keys = all.keys();
+            while (keys.hasNext()) {
+                JSONObject o = all.getJSONObject(keys.next());
+                eOutAngle.valueOf(o.getString("angle"));
+                eOutType.valueOf(o.getString("type"));
+                o.optString("text", "");
+            }
+            storeAll(context, all);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /**
      * Applies the override for a maneuver to the HUD. Returns true when an
      * override was applied (caller should skip the default mapping).
