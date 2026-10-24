@@ -120,6 +120,8 @@ public class MainActivity extends AppCompatActivity {
     SwitchCompat mIdleClockSwitch;
     SwitchCompat mCompassSwitch;
     SwitchCompat mCompassStreetSwitch;
+    SeekBar mCompassScrollSeekbar;
+    TextView mCompassScrollLabel;
 
     //session
     SwitchCompat mAutoStartNavigationSwitch;
@@ -149,6 +151,30 @@ public class MainActivity extends AppCompatActivity {
 
     //========================================================================================
     private SharedPreferences mSharedPrefs;
+
+    /** Scroll speed: progress 0-10, right = faster. Interval = 3000 - 250*progress ms. */
+    public static int scrollProgressToIntervalMs(int progress) {
+        return 3000 - 250 * Math.max(0, Math.min(10, progress));
+    }
+
+    private SeekBar.OnSeekBarChangeListener mCompassScrollSeekbarChangeListener =
+            new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    float secs = scrollProgressToIntervalMs(progress) / 1000f;
+                    mCompassScrollLabel.setText(getString(R.string.layout_seekbar_compass_scroll, secs));
+                    storeIntOptions(R.string.option_compass_scroll_speed, progress);
+                }
+
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) {
+                }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
+                }
+            };
+
     private SeekBar.OnSeekBarChangeListener mBrightnessSeekbarChangeListener = new SeekBar.OnSeekBarChangeListener() {
 
         @Override
@@ -252,6 +278,7 @@ public class MainActivity extends AppCompatActivity {
         mIdleClockSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mCompassSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mCompassStreetSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+        mCompassScrollSeekbar.setOnSeekBarChangeListener(mCompassScrollSeekbarChangeListener);
         mAutoStartNavigationSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mAutoStartMapsOpenSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mGrantUsageAccessButton.setOnClickListener(v -> openUsageAccessSettings());
@@ -340,6 +367,11 @@ public class MainActivity extends AppCompatActivity {
                     getString(R.string.option_compass_mode), true));
             mCompassStreetSwitch.setChecked(mSharedPrefs.getBoolean(
                     getString(R.string.option_compass_street), false));
+            int scrollProgress = mSharedPrefs.getInt(
+                    getString(R.string.option_compass_scroll_speed), 6);
+            mCompassScrollSeekbar.setProgress(scrollProgress);
+            mCompassScrollLabel.setText(getString(R.string.layout_seekbar_compass_scroll,
+                    scrollProgressToIntervalMs(scrollProgress) / 1000f));
 
             mAutoStartNavigationSwitch.setChecked(optionAutoStartNavigation);
             mAutoStartMapsOpenSwitch.setChecked(mSharedPrefs.getBoolean(
@@ -747,6 +779,8 @@ public class MainActivity extends AppCompatActivity {
         mIdleClockSwitch = findViewById(R.id.switchIdleClock);
         mCompassSwitch = findViewById(R.id.switchCompass);
         mCompassStreetSwitch = findViewById(R.id.switchCompassStreet);
+        mCompassScrollSeekbar = findViewById(R.id.seekBarCompassScroll);
+        mCompassScrollLabel = findViewById(R.id.textCompassScrollSpeed);
 
         mAutoStartNavigationSwitch = findViewById(R.id.switchAutoStartNavigation);
         mAutoStartMapsOpenSwitch = findViewById(R.id.switchAutoStartMapsOpen);
