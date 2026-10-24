@@ -84,9 +84,10 @@ public class NotificationMonitor extends NotificationListenerService {
         sHud = hud;
     }
 
+    private MapsForegroundWatcher mMapsForegroundWatcher;
+
     @SuppressLint("HandlerLeak")
-    private Handler mMonitorHandler = new Handler() {
-        @Override
+    private Handler mMonitorHandler = new Handler() {        @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case EVENT_UPDATE_CURRENT_NOS:
@@ -263,6 +264,11 @@ public class NotificationMonitor extends NotificationListenerService {
         sStaticInstance = this;
         mPostman = MainActivityPostman.toMainActivityInstance(this, getString(R.string.broadcast_sender_notification_monitor));
 
+        // Autolaunch when Google Maps / AutoMapa is opened (foreground detection
+        // via UsageStats; the old auto-start only fired on navigation notifications).
+        mMapsForegroundWatcher = new MapsForegroundWatcher(this, mMonitorHandler);
+        mMapsForegroundWatcher.start();
+
         //========================================================================================
 
         loadArrowImagesInAssets();
@@ -296,6 +302,10 @@ public class NotificationMonitor extends NotificationListenerService {
         mMonitorHandler.removeCallbacks(mRetryDistanceUpdate);
         mMonitorHandler.removeCallbacks(mNextPreviewAlternator);
         stopEtaCycler();
+        if (mMapsForegroundWatcher != null) {
+            mMapsForegroundWatcher.stop();
+            mMapsForegroundWatcher = null;
+        }
         if (mMsgReceiver != null) {
             unregisterReceiver(mMsgReceiver);
         }
