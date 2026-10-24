@@ -29,8 +29,9 @@ public final class HudCompass implements SensorEventListener {
 
     private static final long MIN_UPDATE_MS = 2000L;
     private static final float DEGREE_CHANGE_THRESHOLD = 10f;
-    private static final long SCROLL_MS = 1500L;
     private static final long STREET_REFRESH_MS = 30_000L;
+    /** Default scroll interval (matches SeekBar progress 6). */
+    private static final long DEFAULT_SCROLL_MS = 1500L;
 
     private static final String[] CARDINALS = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
     private static final eOutAngle[] ANGLES = {
@@ -77,7 +78,7 @@ public final class HudCompass implements SensorEventListener {
                 sendStreetChunk();
             }
             if (mRunning) {
-                mHandler.postDelayed(this, SCROLL_MS);
+                mHandler.postDelayed(this, getScrollIntervalMs());
             }
         }
     };
@@ -299,6 +300,17 @@ public final class HudCompass implements SensorEventListener {
                 MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
         return prefs.getBoolean(
                 mAppContext.getString(R.string.option_compass_street), false);
+    }
+
+    /** Scroll interval from the SeekBar pref (progress 0-10, right = faster). */
+    private long getScrollIntervalMs() {
+        SharedPreferences prefs = mAppContext.getSharedPreferences(
+                MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
+        int progress = prefs.getInt(
+                mAppContext.getString(R.string.option_compass_scroll_speed), 6);
+        progress = Math.max(0, Math.min(10, progress));
+        long interval = 3000L - 250L * progress;
+        return interval > 0 ? interval : DEFAULT_SCROLL_MS;
     }
 
     private boolean isCompassEnabled() {
