@@ -49,6 +49,9 @@
 
     <string name="layout_title_session">Background session</string>
     <string name="layout_element_auto_start_navigation">Auto-start with Google Maps or AutoMapa navigation</string>
+    <string name="layout_element_auto_start_maps_open">Auto-start when Maps app is opened</string>
+    <string name="action_grant_usage_access">Grant usage access</string>
+    <string name="message_usage_access_required">Usage access is required to detect when Maps is opened</string>
 
     <string name="layout_title_navigation_diagnostics">Navigation diagnostics</string>
     <string name="layout_element_navigation_diagnostics">Record Google Maps, Sygic and AutoMapa notifications</string>
@@ -141,6 +144,7 @@
 
     <string name="settings_section_display">Display</string>
     <string name="layout_element_idle_clock">Idle clock</string>
+    <string name="layout_element_compass_mode">Compass when idle</string>
 
     <string name="settings_section_session">Session</string>
     <string name="settings_section_advanced">Advanced</string>
