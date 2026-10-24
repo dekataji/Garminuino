@@ -6,6 +6,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -27,6 +29,8 @@ public final class HudCompass implements SensorEventListener {
 
     private static final long MIN_UPDATE_MS = 2000L;
     private static final float DEGREE_CHANGE_THRESHOLD = 10f;
+    private static final long SCROLL_MS = 1500L;
+    private static final long STREET_REFRESH_MS = 30_000L;
 
     private static final String[] CARDINALS = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
     private static final eOutAngle[] ANGLES = {
@@ -58,6 +62,37 @@ public final class HudCompass implements SensorEventListener {
     private long mLastUpdateMs;
     private int mLastSector = -1;
     private float mLastDegrees = -1f;
+
+    // Street-name scroller state (option_compass_street).
+    private String mStreetName;
+    private int mScrollIndex;
+
+    private final Runnable mScrollTick = new Runnable() {
+        @Override
+        public void run() {
+            if (mRunning && mConnected && isCompassEnabled()
+                    && isStreetMode() && mStreetName != null
+                    && !isNavigating()) {
+                mScrollIndex++;
+                sendStreetChunk();
+            }
+            if (mRunning) {
+                mHandler.postDelayed(this, SCROLL_MS);
+            }
+        }
+    };
+
+    private final Runnable mStreetRefresh = new Runnable() {
+        @Override
+        public void run() {
+            if (mRunning && mConnected && isCompassEnabled() && isStreetMode()) {
+                refreshStreetName();
+            }
+            if (mRunning) {
+                mHandler.postDelayed(this, STREET_REFRESH_MS);
+            }
+        }
+    };
 
     private final HUDInterface.ConnectionCallback mConnectionCallback =
             this::onConnectionStateChange;
@@ -107,6 +142,13 @@ public final class HudCompass implements SensorEventListener {
                 mSensorManager.registerListener(this, mMagSensor, SensorManager.SENSOR_DELAY_NORMAL);
                 mListening = true;
             }
+            if (mListening) {
+                // Street scroller + refresh tickers; they no-op unless street mode is on.
+                mHandler.removeCallbacks(mScrollTick);
+                mHandler.removeCallbacks(mStreetRefresh);
+                mHandler.post(mScrollTick);
+                mHandler.post(mStreetRefresh);
+            }
         } else if (mListening && (!mRunning || !mConnected || !isCompassEnabled())) {
             stopListening();
         }
@@ -119,6 +161,13 @@ public final class HudCompass implements SensorEventListener {
         mListening = false;
         mHaveAccel = false;
         mHaveMag = false;
+        mHandler.removeCallbacks(mScrollTick);
+        mHandler.removeCallbacks(mStreetRefresh);
+    }
+
+    private boolean isNavigating() {
+        NotificationMonitor monitor = NotificationMonitor.getInstance();
+        return monitor != null && monitor.isNavigating();
     }
 
     @Override
@@ -156,35 +205,100 @@ public final class HudCompass implements SensorEventListener {
 
     private void maybeSendHeading(float degrees) {
         // Navigation owns the display while active.
-        NotificationMonitor monitor = NotificationMonitor.getInstance();
-        if (monitor != null && monitor.isNavigating()) {
+        if (isNavigating()) {
             return;
         }
         int sector = ((int) ((degrees + 22.5f) / 45f)) % 8;
         long now = System.currentTimeMillis();
         boolean sectorChanged = sector != mLastSector;
-        boolean degreesChanged = mLastDegrees < 0
-                || Math.abs(degrees - mLastDegrees) >= DEGREE_CHANGE_THRESHOLD;
-        if (!sectorChanged && !(degreesChanged && now - mLastUpdateMs >= MIN_UPDATE_MS)) {
+        boolean streetActive = isStreetMode() && mStreetName != null;
+
+        HUDInterface hud = HudSessionManager.getInstance(mAppContext).getHud();
+        if (hud == null) {
             return;
         }
-        if (now - mLastUpdateMs < MIN_UPDATE_MS && !sectorChanged) {
+
+        // Arrow always follows the heading.
+        if (sectorChanged && now - mLastUpdateMs >= MIN_UPDATE_MS) {
+            hud.setDirection(ANGLES[sector], eOutType.ArrowOnly, eOutAngle.AsDirection);
+            mLastSector = sector;
+            mLastUpdateMs = now;
+        }
+
+        // Text: the street scroller owns the field in street mode;
+        // otherwise show the heading readout.
+        if (!streetActive) {
+            boolean degreesChanged = mLastDegrees < 0
+                    || Math.abs(degrees - mLastDegrees) >= DEGREE_CHANGE_THRESHOLD;
+            if ((sectorChanged || degreesChanged) && now - mLastUpdateMs >= MIN_UPDATE_MS) {
+                String text = CARDINALS[sector] + String.format("%03d", Math.round(degrees) % 360);
+                sendText(hud, text);
+                mLastDegrees = degrees;
+                mLastUpdateMs = now;
+            }
+        }
+    }
+
+    private static void sendText(HUDInterface hud, String text) {
+        char[] t = new char[]{' ', ' ', ' ', ' '};
+        for (int i = 0; i < Math.min(4, text.length()); i++) {
+            t[i] = text.charAt(i);
+        }
+        hud.setAlphabet(t[0], t[1], t[2], t[3]);
+    }
+
+    /** Advances the 4-char window over the street name and sends it. */
+    private void sendStreetChunk() {
+        if (mStreetName == null || isNavigating()) {
             return;
         }
         HUDInterface hud = HudSessionManager.getInstance(mAppContext).getHud();
         if (hud == null) {
             return;
         }
-        hud.setDirection(ANGLES[sector], eOutType.ArrowOnly, eOutAngle.AsDirection);
-        String text = CARDINALS[sector] + String.format("%03d", Math.round(degrees) % 360);
-        char[] t = new char[]{' ', ' ', ' ', ' '};
-        for (int i = 0; i < Math.min(4, text.length()); i++) {
-            t[i] = text.charAt(i);
+        String padded = mStreetName + "    ";
+        int len = padded.length();
+        int start = mScrollIndex % len;
+        StringBuilder chunk = new StringBuilder(4);
+        for (int i = 0; i < 4; i++) {
+            chunk.append(padded.charAt((start + i) % len));
         }
-        hud.setAlphabet(t[0], t[1], t[2], t[3]);
-        mLastSector = sector;
-        mLastDegrees = degrees;
-        mLastUpdateMs = now;
+        sendText(hud, chunk.toString());
+    }
+
+    /** Refreshes the cached street name from the last-known location (no extra GPS drain). */
+    private void refreshStreetName() {
+        if (!isStreetMode()) {
+            return;
+        }
+        LocationManager lm = (LocationManager) mAppContext.getSystemService(Context.LOCATION_SERVICE);
+        Location loc = null;
+        if (lm != null) {
+            try {
+                loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                if (loc == null) {
+                    loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                }
+            } catch (SecurityException ignored) {
+                return;
+            }
+        }
+        if (loc == null) {
+            return;
+        }
+        StreetNameProvider.getInstance().query(loc.getLatitude(), loc.getLongitude(), name -> {
+            if (name != null && !name.equals(mStreetName)) {
+                mStreetName = name;
+                mScrollIndex = 0;
+            }
+        });
+    }
+
+    private boolean isStreetMode() {
+        SharedPreferences prefs = mAppContext.getSharedPreferences(
+                MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
+        return prefs.getBoolean(
+                mAppContext.getString(R.string.option_compass_street), false);
     }
 
     private boolean isCompassEnabled() {
