@@ -119,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
     SeekBar mBrightnessSeekbar;
     SwitchCompat mIdleClockSwitch;
     SwitchCompat mCompassSwitch;
+    SwitchCompat mCompassStreetSwitch;
 
     //session
     SwitchCompat mAutoStartNavigationSwitch;
@@ -250,6 +251,7 @@ public class MainActivity extends AppCompatActivity {
         mAutoBrightnessSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mIdleClockSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mCompassSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+        mCompassStreetSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mAutoStartNavigationSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mAutoStartMapsOpenSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mGrantUsageAccessButton.setOnClickListener(v -> openUsageAccessSettings());
@@ -336,6 +338,8 @@ public class MainActivity extends AppCompatActivity {
             mIdleClockSwitch.setChecked(optionIdleClock);
             mCompassSwitch.setChecked(mSharedPrefs.getBoolean(
                     getString(R.string.option_compass_mode), true));
+            mCompassStreetSwitch.setChecked(mSharedPrefs.getBoolean(
+                    getString(R.string.option_compass_street), false));
 
             mAutoStartNavigationSwitch.setChecked(optionAutoStartNavigation);
             mAutoStartMapsOpenSwitch.setChecked(mSharedPrefs.getBoolean(
@@ -742,6 +746,7 @@ public class MainActivity extends AppCompatActivity {
         mBrightnessSeekbar = findViewById(R.id.seekBarBrightness);
         mIdleClockSwitch = findViewById(R.id.switchIdleClock);
         mCompassSwitch = findViewById(R.id.switchCompass);
+        mCompassStreetSwitch = findViewById(R.id.switchCompassStreet);
 
         mAutoStartNavigationSwitch = findViewById(R.id.switchAutoStartNavigation);
         mAutoStartMapsOpenSwitch = findViewById(R.id.switchAutoStartMapsOpen);
@@ -1117,6 +1122,10 @@ public class MainActivity extends AppCompatActivity {
 
                 case R.id.switchCompass:
                     storeOptions(R.string.option_compass_mode, view.isChecked());
+                    break;
+
+                case R.id.switchCompassStreet:
+                    storeOptions(R.string.option_compass_street, view.isChecked());
                     break;
 
                 case R.id.switchAutoStartNavigation:
