@@ -118,9 +118,12 @@ public class MainActivity extends AppCompatActivity {
     SwitchCompat mAutoBrightnessSwitch;
     SeekBar mBrightnessSeekbar;
     SwitchCompat mIdleClockSwitch;
+    SwitchCompat mCompassSwitch;
 
     //session
     SwitchCompat mAutoStartNavigationSwitch;
+    SwitchCompat mAutoStartMapsOpenSwitch;
+    Button mGrantUsageAccessButton;
 
     //advanced
     SwitchCompat mNavigationDiagnosticsSwitch;
@@ -246,7 +249,10 @@ public class MainActivity extends AppCompatActivity {
 
         mAutoBrightnessSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mIdleClockSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+        mCompassSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mAutoStartNavigationSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+        mAutoStartMapsOpenSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
+        mGrantUsageAccessButton.setOnClickListener(v -> openUsageAccessSettings());
         mArrowTypeSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
 
         //======================================
@@ -328,8 +334,13 @@ public class MainActivity extends AppCompatActivity {
             mSpeedCameraAlertsSwitch.setChecked(optionSpeedCameraAlerts);
 
             mIdleClockSwitch.setChecked(optionIdleClock);
+            mCompassSwitch.setChecked(mSharedPrefs.getBoolean(
+                    getString(R.string.option_compass_mode), true));
 
             mAutoStartNavigationSwitch.setChecked(optionAutoStartNavigation);
+            mAutoStartMapsOpenSwitch.setChecked(mSharedPrefs.getBoolean(
+                    getString(R.string.option_auto_start_maps_open), true));
+            updateUsageAccessButton();
             mDarkModeAutoSwitch.setChecked(optionDarkModeAuto);
             mDarkModeManualSwitch.setChecked(optionDarkModeMan);
 
@@ -730,8 +741,11 @@ public class MainActivity extends AppCompatActivity {
         mAutoBrightnessSwitch = findViewById(R.id.switchAutoBrightness);
         mBrightnessSeekbar = findViewById(R.id.seekBarBrightness);
         mIdleClockSwitch = findViewById(R.id.switchIdleClock);
+        mCompassSwitch = findViewById(R.id.switchCompass);
 
         mAutoStartNavigationSwitch = findViewById(R.id.switchAutoStartNavigation);
+        mAutoStartMapsOpenSwitch = findViewById(R.id.switchAutoStartMapsOpen);
+        mGrantUsageAccessButton = findViewById(R.id.buttonGrantUsageAccess);
 
         mNavigationDiagnosticsSwitch = findViewById(R.id.switchNavigationDiagnostics);
         mNavigationDiagnosticsStatus = findViewById(R.id.textNavigationDiagnosticsStatus);
@@ -974,6 +988,10 @@ public class MainActivity extends AppCompatActivity {
         if (!mIsNLSEnabled) {
             showConfirmDialog();
         }
+        // Usage access may have been granted in system settings; refresh the button.
+        if (mGrantUsageAccessButton != null && mAutoStartMapsOpenSwitch != null) {
+            updateUsageAccessButton();
+        }
     }
 
     @Override
@@ -1097,11 +1115,20 @@ public class MainActivity extends AppCompatActivity {
                     storeOptions(R.string.option_idle_clock, view.isChecked());
                     break;
 
+                case R.id.switchCompass:
+                    storeOptions(R.string.option_compass_mode, view.isChecked());
+                    break;
+
                 case R.id.switchAutoStartNavigation:
                     storeOptions(R.string.option_auto_start_navigation, view.isChecked());
                     if (view.isChecked() && mShowSpeedSwitch.isChecked()) {
                         requestBackgroundLocationForAutoStart();
                     }
+                    break;
+
+                case R.id.switchAutoStartMapsOpen:
+                    storeOptions(R.string.option_auto_start_maps_open, view.isChecked());
+                    updateUsageAccessButton();
                     break;
 
                 case R.id.switchDarkModeAuto:
@@ -1345,6 +1372,22 @@ public class MainActivity extends AppCompatActivity {
         } else {
             // Permission has already been granted
             return true;
+        }
+    }
+
+    /** Shows the usage-access grant button when the Maps-open auto-start needs it. */
+    private void updateUsageAccessButton() {
+        boolean needGrant = mAutoStartMapsOpenSwitch.isChecked()
+                && !MapsForegroundWatcher.hasUsageAccess(this);
+        mGrantUsageAccessButton.setVisibility(needGrant ? View.VISIBLE : View.GONE);
+    }
+
+    private void openUsageAccessSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+        } catch (Exception e) {
+            android.widget.Toast.makeText(this,
+                    R.string.message_usage_access_required, android.widget.Toast.LENGTH_LONG).show();
         }
     }
 
