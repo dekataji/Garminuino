@@ -145,6 +145,7 @@
     <string name="settings_section_display">Display</string>
     <string name="layout_element_idle_clock">Idle clock</string>
     <string name="layout_element_compass_mode">Compass when idle</string>
+    <string name="layout_element_compass_street">Street name instead of heading</string>
 
     <string name="settings_section_session">Session</string>
     <string name="settings_section_advanced">Advanced</string>
