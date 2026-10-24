@@ -25,6 +25,7 @@
     <string name="option_idle_clock" translatable="false">option_idle_clock</string>
     <string name="option_compass_mode" translatable="false">option_compass_mode</string>
     <string name="option_compass_street" translatable="false">option_compass_street</string>
+    <string name="option_compass_scroll_speed" translatable="false">option_compass_scroll_speed</string>
     <string name="option_auto_start_maps_open" translatable="false">option_auto_start_maps_open</string>
 
     <string name="roundabout_exit_numbers" translatable="false">roundabout_exit_numbers</string>
