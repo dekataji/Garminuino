@@ -22,6 +22,7 @@ public class HudConnectionService extends Service {
     private static final int NOTIFICATION_ID = 1001;
     private static volatile boolean sRunning;
     private HudIdleClock mIdleClock;
+    private HudCompass mCompass;
 
     public static boolean isRunning() {
         return sRunning;
@@ -58,6 +59,9 @@ public class HudConnectionService extends Service {
 
         mIdleClock = new HudIdleClock(this);
         mIdleClock.start();
+
+        mCompass = new HudCompass(this);
+        mCompass.start();
     }
 
     @Override
@@ -82,6 +86,10 @@ public class HudConnectionService extends Service {
         if (mIdleClock != null) {
             mIdleClock.stop();
             mIdleClock = null;
+        }
+        if (mCompass != null) {
+            mCompass.stop();
+            mCompass = null;
         }
         HudSessionManager.getInstance(this).shutdown();
         super.onDestroy();
