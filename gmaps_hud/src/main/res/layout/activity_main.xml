@@ -292,6 +292,14 @@
                             android:checked="true"
                             android:text="@string/layout_element_compass_mode"
                             android:textSize="@dimen/option_text_size" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchCompassStreet"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="false"
+                            android:text="@string/layout_element_compass_street"
+                            android:textSize="@dimen/option_text_size" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
