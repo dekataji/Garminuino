@@ -284,6 +284,14 @@
                             android:checked="true"
                             android:text="@string/layout_element_idle_clock"
                             android:textSize="@dimen/option_text_size" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchCompass"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/layout_element_compass_mode"
+                            android:textSize="@dimen/option_text_size" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -313,6 +321,22 @@
                             android:checked="false"
                             android:text="@string/layout_element_auto_start_navigation"
                             android:textSize="@dimen/option_text_size" />
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchAutoStartMapsOpen"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/layout_element_auto_start_maps_open"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <Button
+                            android:id="@+id/buttonGrantUsageAccess"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/action_grant_usage_access"
+                            android:visibility="gone" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
