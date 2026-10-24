@@ -300,6 +300,20 @@
                             android:checked="false"
                             android:text="@string/layout_element_compass_street"
                             android:textSize="@dimen/option_text_size" />
+
+                        <TextView
+                            android:id="@+id/textCompassScrollSpeed"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:textSize="@dimen/option_text_size" />
+
+                        <SeekBar
+                            android:id="@+id/seekBarCompassScroll"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:max="10"
+                            android:progress="6" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
