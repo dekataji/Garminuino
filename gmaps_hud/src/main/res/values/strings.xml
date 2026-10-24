@@ -146,6 +146,7 @@
     <string name="layout_element_idle_clock">Idle clock</string>
     <string name="layout_element_compass_mode">Compass when idle</string>
     <string name="layout_element_compass_street">Street name instead of heading</string>
+    <string name="layout_seekbar_compass_scroll">Scroll speed: %1$.1fs/step</string>
 
     <string name="settings_section_session">Session</string>
     <string name="settings_section_advanced">Advanced</string>
