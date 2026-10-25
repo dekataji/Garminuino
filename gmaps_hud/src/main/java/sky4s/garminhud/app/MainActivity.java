@@ -123,6 +123,14 @@ public class MainActivity extends AppCompatActivity {
     SeekBar mCompassScrollSeekbar;
     TextView mCompassScrollLabel;
 
+    //font test
+    TextView mFontTestLabel;
+    Button mFontTestPrevButton;
+    Button mFontTestNextButton;
+    Button mFontTestStartButton;
+    int mFontTestGroup = 0;
+    boolean mFontTestActive = false;
+
     //session
     SwitchCompat mAutoStartNavigationSwitch;
     SwitchCompat mAutoStartMapsOpenSwitch;
@@ -174,6 +182,38 @@ public class MainActivity extends AppCompatActivity {
                 public void onStopTrackingTouch(SeekBar seekBar) {
                 }
             };
+
+    /** Font test: Start shows group 1 and yields the HUD text field; Done resumes normal display. */
+    private void fontTestToggle() {
+        if (mFontTestActive) {
+            mFontTestActive = false;
+            HudCompass.sFontTestActive = false;
+            mFontTestLabel.setText(R.string.layout_font_test_idle);
+            mFontTestStartButton.setText(R.string.layout_font_test_start);
+        } else {
+            mFontTestActive = true;
+            HudCompass.sFontTestActive = true;
+            mFontTestGroup = 0;
+            fontTestShow();
+            mFontTestStartButton.setText(R.string.layout_font_test_done);
+        }
+    }
+
+    private void fontTestStep(int delta) {
+        if (!mFontTestActive) {
+            return;
+        }
+        mFontTestGroup = Math.max(0, Math.min(FontTest.GROUPS.length - 1, mFontTestGroup + delta));
+        fontTestShow();
+    }
+
+    private void fontTestShow() {
+        boolean sent = FontTest.sendGroup(this, mFontTestGroup);
+        String group = FontTest.GROUPS[mFontTestGroup];
+        mFontTestLabel.setText(sent
+                ? getString(R.string.layout_font_test_group, mFontTestGroup + 1, FontTest.GROUPS.length, group)
+                : getString(R.string.layout_font_test_no_hud, mFontTestGroup + 1, FontTest.GROUPS.length, group));
+    }
 
     private SeekBar.OnSeekBarChangeListener mBrightnessSeekbarChangeListener = new SeekBar.OnSeekBarChangeListener() {
 
@@ -282,6 +322,9 @@ public class MainActivity extends AppCompatActivity {
         mAutoStartNavigationSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mAutoStartMapsOpenSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
         mGrantUsageAccessButton.setOnClickListener(v -> openUsageAccessSettings());
+        mFontTestPrevButton.setOnClickListener(v -> fontTestStep(-1));
+        mFontTestNextButton.setOnClickListener(v -> fontTestStep(1));
+        mFontTestStartButton.setOnClickListener(v -> fontTestToggle());
         mArrowTypeSwitch.setOnCheckedChangeListener(mOnCheckedChangedListener);
 
         //======================================
@@ -782,6 +825,11 @@ public class MainActivity extends AppCompatActivity {
         mCompassScrollSeekbar = findViewById(R.id.seekBarCompassScroll);
         mCompassScrollLabel = findViewById(R.id.textCompassScrollSpeed);
 
+        mFontTestLabel = findViewById(R.id.textFontTest);
+        mFontTestPrevButton = findViewById(R.id.buttonFontTestPrev);
+        mFontTestNextButton = findViewById(R.id.buttonFontTestNext);
+        mFontTestStartButton = findViewById(R.id.buttonFontTestStart);
+
         mAutoStartNavigationSwitch = findViewById(R.id.switchAutoStartNavigation);
         mAutoStartMapsOpenSwitch = findViewById(R.id.switchAutoStartMapsOpen);
         mGrantUsageAccessButton = findViewById(R.id.buttonGrantUsageAccess);
@@ -979,6 +1027,8 @@ public class MainActivity extends AppCompatActivity {
     public void onDestroy() {
         super.onDestroy();
 
+        // Never leave the HUD text field owned by a dead test session.
+        HudCompass.sFontTestActive = false;
         HudSessionManager.getInstance(this).removeConnectionCallback(mHudConnectionCallback);
         unbindLocationService();
         if (mNotificationManager != null) {
