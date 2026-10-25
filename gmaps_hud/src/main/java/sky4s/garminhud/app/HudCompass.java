@@ -68,12 +68,19 @@ public final class HudCompass implements SensorEventListener {
     private String mStreetName;
     private int mScrollIndex;
 
+    /**
+     * While true, the font test owns the alphabet field: the street scroller
+     * and heading text yield so the test group is not overwritten. Set by
+     * MainActivity (same process as the HUD service).
+     */
+    public static volatile boolean sFontTestActive = false;
+
     private final Runnable mScrollTick = new Runnable() {
         @Override
         public void run() {
             if (mRunning && mConnected && isCompassEnabled()
                     && isStreetMode() && mStreetName != null
-                    && !isNavigating()) {
+                    && !isNavigating() && !sFontTestActive) {
                 mScrollIndex++;
                 sendStreetChunk();
             }
@@ -205,6 +212,10 @@ public final class HudCompass implements SensorEventListener {
     }
 
     private void maybeSendHeading(float degrees) {
+        // The font test owns the alphabet field while active.
+        if (sFontTestActive) {
+            return;
+        }
         // Navigation owns the display while active.
         if (isNavigating()) {
             return;
