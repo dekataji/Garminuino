@@ -148,6 +148,15 @@
     <string name="layout_element_compass_street">Street name instead of heading</string>
     <string name="layout_seekbar_compass_scroll">Scroll speed: %1$.1fs/step</string>
 
+    <string name="settings_section_font_test">HUD font test</string>
+    <string name="layout_font_test_idle">Tap Start, then step through groups and note which letters appear on the HUD.</string>
+    <string name="layout_font_test_group">Group %1$d/%2$d: %3$s — note which letters appear on the HUD.</string>
+    <string name="layout_font_test_no_hud">Group %1$d/%2$d: %3$s — HUD not connected.</string>
+    <string name="layout_font_test_prev">Prev</string>
+    <string name="layout_font_test_next">Next</string>
+    <string name="layout_font_test_start">Start</string>
+    <string name="layout_font_test_done">Done</string>
+
     <string name="settings_section_session">Session</string>
     <string name="settings_section_advanced">Advanced</string>
     <string name="settings_section_appearance">Appearance</string>
