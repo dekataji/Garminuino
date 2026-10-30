@@ -1051,15 +1051,16 @@ public class NotificationMonitor extends NotificationListenerService {
     };
 
     /**
-     * Auto-start makes the HUD application part of the navigation application's lifetime. Once
-     * the grace-period check confirms that Google Maps or AutoMapa is no longer navigating, stop
-     * every foreground component, disconnect the HUD and remove our activity from Recents.
-     * NotificationMonitor itself remains enabled so Android can start the next automatic session.
+     * Once the grace-period check confirms that Google Maps or AutoMapa is no longer
+     * navigating, end the navigation-session components (location, screen recording —
+     * stopped by the caller) and remove our activity from Recents. The HUD connection
+     * service deliberately keeps running: the link must survive the end of a trip so
+     * the HUD stays paired (idle clock) and the next trip connects without opening
+     * the app. NotificationMonitor itself remains enabled so Android can start the
+     * next automatic session.
      */
     private void closeAutomaticNavigationSession() {
-        Log.i(TAG, "Closing application after automatic navigation session ended");
-        HudConnectionService.stop(this);
-        HudSessionManager.getInstance(this).shutdown();
+        Log.i(TAG, "Automatic navigation session ended; HUD connection stays up");
 
         ActivityManager activityManager = getSystemService(ActivityManager.class);
         if (activityManager == null) return;
