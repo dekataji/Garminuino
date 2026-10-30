@@ -67,16 +67,21 @@ public class HudConnectionService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         HudSessionManager.getInstance(this).initialize();
-        return START_NOT_STICKY;
+        // Sticky: if the process is killed (memory pressure, OEM battery
+        // management), the system restarts the service and the HUD link
+        // re-establishes without the user opening the app.
+        return START_STICKY;
     }
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        // Swiping the app out of Recents must not drop the HUD link: the
+        // connection lives here, not in the activity. Only mute automatic
+        // session restarts for the navigation already in progress.
         NotificationMonitor monitor = NotificationMonitor.getInstance();
         if (monitor != null) {
             monitor.suppressAutoStartForCurrentNavigation();
         }
-        stopSelf();
         super.onTaskRemoved(rootIntent);
     }
 
