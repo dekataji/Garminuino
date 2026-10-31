@@ -490,6 +490,15 @@ public class NotificationMonitor extends NotificationListenerService {
         mParseMethod = 0;
         boolean parseResult = parseGmapsNotificationByExtras(notification);
 
+        if (parseResult) {
+            // A parsed navigation-group notification means a session is active.
+            // HudCompass and HudIdleClock read this flag to yield the HUD; the
+            // extras path never set it, so the compass kept overwriting the
+            // navigation display mid-trip. Cleared only by the grace-period
+            // session stop, never by a single failed parse.
+            mIsNavigating = true;
+        }
+
         if (!parseResult) {
             mPostman.addBooleanExtra(getString(R.string.notify_parse_failed), true);
             mPostman.addBooleanExtra(getString(R.string.gmaps_notify_catched), true);
